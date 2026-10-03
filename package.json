@@ -1,0 +1,8 @@
+{
+  "name": "little-forest",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "vite dist", "test": "node --test" },
+  "devDependencies": { "vite": "8.0.13" }
+}
