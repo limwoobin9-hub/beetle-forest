@@ -107,3 +107,7 @@
 .care-badge.critical-needed{background:#904331;color:#fff2d6}
 .product-card p{font-size:12px}.shop-level small{font-size:12px}
 .screen-heading .btn.quiet,.case-heading .btn.quiet{color:#f1efd7;border-color:#adc395}
+/* Disabled actions remain readable; muted fills convey availability. */
+.btn:disabled{opacity:1;color:#4d5c49;background:#e0e4d1;border-color:#a2ae91;box-shadow:none}
+.screen-heading,.panel-head{flex-wrap:wrap}
+.tip.attention{color:#804728}
