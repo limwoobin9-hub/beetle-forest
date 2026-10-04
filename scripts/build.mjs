@@ -1,0 +1,11 @@
+import {build} from 'esbuild';
+import {readFile,writeFile,rm} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+await build({entryPoints:['scripts/supabase-browser.js'],bundle:true,format:'esm',platform:'browser',minify:true,outfile:'dist/backend.js'});
+await rm('dist/assets',{recursive:true,force:true});
+const output=await build({entryPoints:['dist/app.js'],bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,outdir:'dist/assets',entryNames:'game-[hash]',metafile:true});
+const game=Object.entries(output.metafile.outputs).find(([,info])=>info.entryPoint==='dist/app.js')[0].replace(/^dist\//,'./');
+const css=await readFile('dist/style.css'),version=createHash('sha256').update(css).digest('hex').slice(0,12);
+const template=await readFile('scripts/index.html','utf8');
+await writeFile('dist/index.html',template.replace('./app.js',game).replace('./style.css',`./style.css?v=${version}`));
+console.log(`Browser build: ${game}`);

@@ -6,3 +6,4 @@ node_modules/
 *.tgz
 *.tar.gz
 dist/backend.js
+dist/assets/
