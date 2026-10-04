@@ -1,7 +1,7 @@
 import {SPECIES,sizeRange} from './world.js';
 import {isLarva} from './catalog.js';
 import {stageName} from './time.js';
-import {inheritanceChances,stableTraitRandom} from './traits.js';
+import {inheritanceChances,stableTraitRandom,traitMarketBonus,traitPremium,traitRarity,traitLabel,traitRateText} from './traits.js';
 import {validSpecimenWork} from './specimens.js';
 export const MINUTE=60000,MAX_AUCTION_MINUTES=10080,MAX_ACTIVE_AUCTIONS=8;
 export const AUCTION_KINDS={adult:'성충',larva:'유충 묶음',specimen:'표본'};
@@ -19,25 +19,26 @@ export function marketValue(kind,asset){
  const factors=[],rare=SPECIES[sp].rarity;let score,traitPower,value;
  if(kind==='larva'){
   score=asset.parents.reduce((n,p)=>n+sizeScore(p),0)/2;
-  traitPower=inheritanceChances(sp,asset.parents).reduce((n,t)=>n+t.chance,0);
+  const inherited=inheritanceChances(sp,asset.parents);
+  traitPower=inherited.reduce((n,t)=>n+(traitPremium(t.id)-1)*t.chance,0);
   const stage=stageName(asset),stageWeight={'1령':.72,'2령':.86,'3령':1}[stage]||.72;
-  value=base*(.10+5.8*Math.pow(score,3.2))*(1+traitPower*1.8)*3*.55*stageWeight*(.65+.35*asset.food/100);
+  value=base*(.10+5.8*Math.pow(score,3.2))*(1+traitPower)*3*.55*stageWeight*(.65+.35*asset.food/100);
   factors.push(`부모 ♂ ${asset.parents[0].length.toFixed(1)} / ♀ ${asset.parents[1].length.toFixed(1)} mm`,`${stage} · 3마리 묶음`);
-  if(traitPower)factors.push('부모의 희귀 특성·유전 기대');
+  for(const t of inherited)factors.push(`${t.name} · ${traitRarity(t.id).name} · 유전 기대 ${traitRateText(t.chance)}`);
  }else{
-  score=sizeScore(b);traitPower=(b.traits||[]).length;
-  value=base*(.10+6*Math.pow(score,3.4))*(1+traitPower*1.7);
+  score=sizeScore(b);traitPower=traitMarketBonus(b.traits);
+  value=base*(.10+6*Math.pow(score,3.4))*(1+traitPower);
   if(kind==='adult')value*=.42+.58*b.health/100;
   if(kind==='specimen')value*=1.08+(asset.work?.label?.collector?.trim() ? .15 : 0);
   factors.push(`${b.sex==='male'?'수컷':'암컷'} ${b.length.toFixed(1)} mm · 동종·동성별 크기 기준`);
-  if(traitPower)factors.push(`희귀 특성 ${traitPower}개`);
+  for(const id of b.traits||[])factors.push(`${traitLabel(id,b.sex)} · ${traitRarity(id).name} · 단일 특성 평가 ×${traitPremium(id).toFixed(2)}`);
   if(kind==='adult'&&b.health<60)factors.push('컨디션에 따른 감가');
   if(kind==='specimen')factors.push('제작 완료·라벨 부착 표본');
  }
  if(rare)factors.push('희귀종 수집 수요');
  if(score<.25&&!traitPower)factors.push('소형 기본형 · 낮은 수요·유찰 가능');
  else if(score>.80)factors.push(kind==='larva'?'대형 부모세대':'동종 대형 개체');
- const demand=cap(.025+.78*score*score+Math.min(.3,traitPower*.18)+rare*.025,.015,.96);
+ const demand=cap(.025+.78*score*score+Math.min(.45,.12*Math.log2(1+traitPower))+rare*.025,.015,.96);
  value=Math.max(5,Math.round(value));
  return {value,demand,low:Math.max(1,Math.floor(value*.55)),high:Math.ceil(value*1.5),suggested:Math.max(1,Math.floor(value*.4)),factors};
 }

@@ -5,6 +5,7 @@ import {marketValue,listAuction,syncAuctions,cancelAuction,marketPlan,auctionRes
 import {createLine,lineStats} from '../dist/lines.js';
 import {PARTS,PIN_POINT} from '../dist/specimens.js';
 import {worldKeys,loadWorld,saveWorld} from '../dist/worlds.js';
+import {traitPremium} from '../dist/traits.js';
 const NOW=1800000000000;
 const bug=(species='flat',sex='male',traits=[])=>createBug(species,sex,.7,1,'채집',null,1,null,{traits});
 function stock(){const s=newGame(NOW),m=bug(),f=bug('flat','female');s.bugs.push(m,f);s.inventory.basic_mat=100;s.substrate=100;return {s,m,f};}
@@ -21,6 +22,39 @@ test('all species and both sexes value large and rare individuals above small ba
 });
 test('large parental measurements and matching rare parents increase larval bundle value',()=>{
  const {s,m,f}=stock(),brood=larvae(s,m,f);const base=marketValue('larva',brood),large=structuredClone(brood);large.parents[0].length=82;large.parents[1].length=46;const premium=marketValue('larva',large);large.parents.forEach(p=>p.traits=['flat_long']);const rare=marketValue('larva',large);assert.ok(base.value<premium.value&&premium.value<rare.value);assert.ok(base.demand<premium.demand);assert.ok(rare.factors.some(f=>f.includes('유전')));
+});
+test('equal-size adults and specimens receive higher prices and demand for rarer traits in both sexes',()=>{
+ for(const sex of ['male','female']){
+  const base=bug('king',sex),curved=bug('king',sex,['king_curved']),white=bug('king',sex,['king_white_eye']),pink=bug('king',sex,['king_pink_eye']);
+  for(const b of [base,curved,white,pink])b.length=sex==='male'?60:40;
+  for(const kind of ['adult','specimen']){
+   const profiles=[base,curved,white,pink].map(b=>marketValue(kind,kind==='specimen'?{bug:b,work:{label:{collector:''}}}:b));
+   for(let i=1;i<profiles.length;i++){assert.ok(profiles[i].value>profiles[i-1].value);assert.ok(profiles[i].demand>profiles[i-1].demand);}
+   assert.ok(profiles[3].factors.some(f=>f.includes('극희귀')&&f.includes('×')));
+   assert.ok(Math.abs(profiles[3].value/profiles[0].value-traitPremium('king_pink_eye'))<.1);
+  }
+ }
+});
+test('larval prices use parental rarity times inheritance chance, without inspecting future children',()=>{
+ const {s,m,f}=stock(),brood=larvae(s,m,f);brood.species='king';brood.parents[0]=bug('king','male');brood.parents[1]=bug('king','female');
+ const price=traits=>{brood.parents[0].traits=traits[0];brood.parents[1].traits=traits[1];return marketValue('larva',brood);};
+ const basic=price([[],[]]),curved=price([['king_curved'],[]]),single=price([['king_pink_eye'],[]]),matchedCurved=price([['king_curved'],['king_curved']]),matched=price([['king_pink_eye'],['king_pink_eye']]);
+ assert.ok(basic.value<curved.value&&curved.value<single.value&&single.value<matched.value);assert.ok(matchedCurved.value<matched.value);assert.ok(single.demand<matched.demand);
+ assert.ok(matched.factors.some(f=>f.includes('극희귀')&&f.includes('유전 기대 75%')));
+ const before=structuredClone(matched);brood.children.forEach(c=>{c.sex='female';c.traits=['king_pink_eye'];c.genetic=1;});assert.deepEqual(marketValue('larva',brood),before);
+});
+test('rare trait premiums add their bonuses and produce higher bidder budgets on a fixed visitor seed',()=>{
+ const body=bug('rhino','female',['rhino_red']),eye=bug('rhino','female',['rhino_white_eye']),both=bug('rhino','female',['rhino_red','rhino_white_eye']),basic=bug('rhino','female');
+ const p=marketValue('adult',both),b=marketValue('adult',basic);assert.ok(p.value>marketValue('adult',body).value&&p.value>marketValue('adult',eye).value);assert.ok(Math.abs(p.value/b.value-(traitPremium('rhino_red')+traitPremium('rhino_white_eye')-1))<.1);
+ const common=bug('king','male',['king_curved']),rare=bug('king','male',['king_pink_eye']);const lot={id:'same-rarity-seed',started:NOW,ends:NOW+10*MINUTE};
+ const a=marketPlan({...lot,market:marketValue('adult',common)}),c=marketPlan({...lot,market:marketValue('adult',rare)});
+ assert.ok(c.length>=a.length);assert.ok(a.length>0);for(const visitor of a)assert.ok(c.find(v=>v.bidder===visitor.bidder).limit>visitor.limit);
+});
+test('existing auction snapshots, planned offspring and assigned traits survive the rate update without repricing',()=>{
+ const {s,m,f}=stock();m.traits=['flat_toothless'];f.traits=['flat_toothless'];const brood=breed(s,m.id,f.id,()=>.1),planned=structuredClone(brood.children),a=listAuction(s,'adult',m.id,{startPrice:1,durationMinutes:10},NOW);
+ // A previous release stored the old fixed-count premium in the lot snapshot.
+ a.market={value:100,demand:.4,low:55,high:150,suggested:40,factors:['기존 출품 평가']};const profile=structuredClone(a.market),visitors=marketPlan(a),saved=JSON.parse(JSON.stringify(s));
+ migrateSave(saved,NOW);assert.deepEqual(saved.auctions[0].market,profile);assert.deepEqual(marketPlan(saved.auctions[0]),visitors);assert.deepEqual(saved.auctions[0].asset.traits,['flat_toothless']);assert.deepEqual(saved.broods[0].children,planned);valid(saved);
 });
 test('price and duration errors, unavailable assets and occupied fights leave ownership unchanged',()=>{
  const {s,m}=stock();for(const options of [{startPrice:0,durationMinutes:10},{startPrice:1.5,durationMinutes:10},{startPrice:1,durationMinutes:0},{startPrice:1,durationMinutes:10081},{startPrice:1,durationMinutes:1.2}]){const before=JSON.stringify(s);assert.throws(()=>listAuction(s,'adult',m.id,options,NOW));assert.equal(JSON.stringify(s),before);}

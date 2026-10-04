@@ -51,7 +51,7 @@ Supabase 설정과 인증 검증: [계정 구현](docs/accounts-ko.md).
 
 성장 크기의 자료와 게임 조정 기준: [번식 크기·현실 환경](docs/environment-growth-ko.md).
 
-희귀 특성의 종별 목록·출현·유전·자료 기준: [특성과 유전](docs/traits-ko.md).
+희귀 특성의 종별 등장 확률·희귀도·경매 평가 배율·유전·사육 자료 기준: [특성과 유전](docs/traits-ko.md).
 
 라인 지정·누대·교배 기록: [라인 관리](docs/lines-ko.md).
 
