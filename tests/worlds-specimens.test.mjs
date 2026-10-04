@@ -19,10 +19,10 @@ function poseAndDry(s,m){
 function finishWork(s,m){poseAndDry(s,m);for(let i=0;i<3;i++)advanceDay(s);for(const p of PARTS){workSpecimen(s,m.id,'remove-support',{x:91,y:91},{part:p.key});valid(s);}workSpecimen(s,m.id,'label',{x:50,y:91},{collector:'사육자',caption:'숲에서 채집한 개체'});valid(s);}
 
 test('legacy real-time save moves to one world without losing its clock or insects',()=>{
- const store=storage(),s=newGame(NOW);s.bugs.push(createBug('flat','female',.6,1));setTimeOptions(s,{realTime:true,realGrowth:true},NOW);s.version=4;delete s.memorials;delete s.specimenCases;delete s.careAidDay;delete s.bugs[0].criticalDays;
+ const store=storage(),s=newGame(NOW);s.bugs.push(createBug('flat','female',.6,1));setTimeOptions(s,{realTime:true,realGrowth:true},NOW);s.version=4;delete s.clock.calendar;delete s.memorials;delete s.specimenCases;delete s.careAidDay;delete s.bugs[0].criticalDays;
  store.setItem(LEGACY_SAVE,JSON.stringify(s));store.setItem(LEGACY_UI,JSON.stringify({sort:'size-asc',view:'book'}));
  assert.equal(initializeWorlds(store,NOW+DAY_MS/2),'real');assert.equal(store.getItem(worldKeys('virtual').save),null);assert.equal(JSON.parse(store.getItem(LEGACY_SAVE)).version,4);
- const real=loadWorld(store,'real',NOW+DAY_MS/2);assert.equal(real.state.bugs[0].id,s.bugs[0].id);assert.equal(real.state.clock.anchorAt,NOW);assert.equal(real.state.settings.realGrowth,true);assert.equal(real.ui.sort,'size-asc');assert.equal(real.state.bugs[0].criticalDays,0);valid(real.state);
+ const real=loadWorld(store,'real',NOW+DAY_MS/2);assert.equal(real.state.bugs[0].id,s.bugs[0].id);assert.equal(real.state.clock.anchorAt,NOW+DAY_MS/2);assert.equal(real.state.day,1);assert.equal(real.state.clock.calendar,true);assert.equal(real.state.settings.realGrowth,true);assert.equal(real.ui.sort,'size-asc');assert.equal(real.state.bugs[0].criticalDays,0);valid(real.state);
  assert.equal(initializeWorlds(store,NOW),null);
 });
 test('worlds isolate insects, currency, UI and clocks while only real time catches up',()=>{

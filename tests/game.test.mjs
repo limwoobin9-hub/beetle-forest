@@ -4,7 +4,7 @@ import {SPECIES,newGame,createBug,buy,care,startExpedition,inspectSpot,approachI
 import {PRODUCTS,SHOP_AREAS,LEVEL_XP,keeperLevel,shopAccess} from '../dist/catalog.js';
 
 import {stepHabitat,habitatState} from '../dist/habitat.js';
-import {DAY_MS,growthDays,nextDayAt} from '../dist/time.js';
+import {DAY_MS,growthDays,nextDayAt,midnightAt} from '../dist/time.js';
 import {collectionView,staminaCapacity} from '../dist/collection.js';
 const random=()=>.25;
 function rng(seed=17){return ()=>{seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return (seed>>>0)/4294967296;};}
@@ -158,13 +158,13 @@ test('v2 migration corrects impossible captured size and preserves brood ancestr
  delete s.traps;delete s.researchClaimed;delete s.totalBreedings;delete s.totalEmergences;
  valid(s);migrateSave(s);assert.ok(m.length<=69);assert.ok(f.length<=44);assert.ok(s.records['king-male']<=69);assert.equal(s.broods.length,1);assert.equal(s.inventory.banana,6);valid(s);
 });
-test('real time requires a complete 24 hours, catches up after reload, and never repeats days',()=>{
- const now=1800000000000,s=newGame(now);
+test('real time follows Korean midnight, catches up after reload, and never repeats dates',()=>{
+ const now=Date.parse('2026-10-04T23:59:00+09:00'),s=newGame(now),boundary=Date.parse('2026-10-05T00:00:00+09:00');
  assert.equal(syncRealTime(s,now+8*DAY_MS).days,0);
- setTimeOptions(s,{realTime:true,realGrowth:false},now);assert.throws(()=>advanceDay(s),/24시간/);
- assert.equal(nextDayAt(s),now+DAY_MS);assert.equal(syncRealTime(s,now+DAY_MS-1).days,0);
- assert.equal(syncRealTime(s,now+DAY_MS).days,1);assert.equal(s.day,2);assert.equal(syncRealTime(s,now+DAY_MS).days,0);
- const restored=JSON.parse(JSON.stringify(s));assert.equal(syncRealTime(restored,now+4.75*DAY_MS).days,3);assert.equal(restored.day,5);assert.equal(nextDayAt(restored),now+5*DAY_MS);
+ setTimeOptions(s,{realTime:true,realGrowth:false},now);assert.throws(()=>advanceDay(s),/자정/);
+ assert.equal(nextDayAt(s),boundary);assert.equal(syncRealTime(s,boundary-1).days,0);
+ assert.equal(syncRealTime(s,boundary).days,1);assert.equal(s.day,2);assert.equal(syncRealTime(s,boundary).days,0);
+ const restored=JSON.parse(JSON.stringify(s));assert.equal(syncRealTime(restored,boundary+3.75*DAY_MS).days,3);assert.equal(restored.day,5);assert.equal(nextDayAt(restored),boundary+4*DAY_MS);
  assert.equal(syncRealTime(restored,now+2*DAY_MS).days,0);assert.equal(restored.day,5);valid(restored);
 });
 test('natural schedules take months and every species persists until its emergence day',()=>{
@@ -177,7 +177,7 @@ test('natural schedules take months and every species persists until its emergen
  }
 });
 test('switching growth modes preserves the current instar and progress, and disabling real time resumes buttons',()=>{
- const now=1800000000000,s=newGame(now),[m,f]=parents(s),brood=breed(s,m.id,f.id,random);
+ const now=midnightAt(1800000000000),s=newGame(now),[m,f]=parents(s),brood=breed(s,m.id,f.id,random);
  assert.throws(()=>setTimeOptions(s,{realTime:false,realGrowth:true},now),/함께/);
  for(let i=0;i<6;i++)advanceDay(s);assert.equal(broodStage(brood),'2령');const age=brood.age;
  setTimeOptions(s,{realTime:true,realGrowth:true},now);assert.equal(broodStage(brood),'2령');assert.ok(brood.age>age);valid(s);

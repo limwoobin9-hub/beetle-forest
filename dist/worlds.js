@@ -1,7 +1,7 @@
 import {newGame,migrateSave,validateSave,syncRealTime,setTimeOptions} from './engine.js';
 
 export const WORLDS=[
-  {id:'real',name:'현실의 숲',realTime:true,clock:'실제 24시간마다 하루 진행',description:'접속하지 않은 동안에도 성장·사육 상태·사망 조건이 진행됩니다.'},
+  {id:'real',name:'현실의 숲',realTime:true,clock:'현재 날짜·시각 연동 · 자정에 하루 진행',description:'접속하지 않은 동안에도 성장·사육 상태·사망 조건이 진행됩니다.'},
   {id:'virtual',name:'상상의 숲',realTime:false,clock:'다음 날 버튼으로 하루 진행',description:'원하는 때에 시간을 넘기며 사육합니다.'}
 ];
 export const LEGACY_SAVE='little-forest-save-v1',LEGACY_UI='little-forest-ui-v1';
@@ -35,7 +35,7 @@ export function loadWorld(storage,id,now=Date.now()){
   const world=getWorld(id),keys=worldKeys(id),raw=storage.getItem(keys.save);
   let state,notice='';
   if(raw){try{state=migrateSave(parseSave(raw),now);}catch{storage.setItem(keys.save+'-recovery',raw);notice='저장 데이터를 읽지 못했어요. 기존 기록은 복구용으로 보관했어요.';}}
-  if(!state){state=newGame(now);state.settings.realTime=world.realTime;}
+  if(!state){state=newGame(now);state.settings.realTime=world.realTime;state.clock.calendar=true;}
   if(state.settings.realTime!==world.realTime)setTimeOptions(state,{realTime:world.realTime,realGrowth:world.realTime&&state.settings.realGrowth},now);
   const elapsed=syncRealTime(state,now);
   if(elapsed.days)notice=`지난 ${elapsed.days}일 반영${elapsed.events.length?' · 사육일지 확인 가능':''}`;

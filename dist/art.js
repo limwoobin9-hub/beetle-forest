@@ -121,14 +121,29 @@ function trunk(c,x,y,width,height,deep=false){const p=pen(c);const b=deep?'#3b44
 function jelly(c,x,y){const p=pen(c);p(x,y+5,20,6,'#d1d2aa');p(x+2,y+10,16,4,'#869d7b');p(x+3,y+2,14,7,'#a95d47');p(x+5,y,10,2,'#c9895b');p(x+5,y+3,5,2,'#e7b779');p(x,y+8,20,2,'#efe8c6');}
 function log(c,x,y,w,h){const p=pen(c);p(x+3,y,w-6,h,'#785b3e');p(x,y+3,w,h-6,'#8c6e46');p(x+5,y+2,w-10,3,'#b68c50');for(let i=0;i<3;i++)p(x+8,y+7+i*5,w-16,1,'#584c37');oval(c,x+w-12,y+2,12,h-4,'#d7b97b');oval(c,x+w-10,y+5,7,h-10,'#aa854b');p(x+w-8,y+7,2,h-14,'#e8c987');}
 function plant(c,x,y){const p=pen(c);p(x+9,y,2,27,'#537e47');poly(c,[[x+9,y+11],[x,y+6],[x+1,y+1],[x+8,y+4],[x+11,y+12]],'#759c53');poly(c,[[x+10,y+18],[x+21,y+10],[x+25,y+11],[x+20,y+19],[x+11,y+23]],'#92b565');p(x+5,y+25,14,4,'#b68258');p(x+7,y+29,10,11,'#966548');p(x+8,y+29,3,9,'#c79665');}
-function roomBackground(c){
+function roomWindow(c,environment){
+ const p=pen(c),period=environment.period||'day',weather=environment.weather;
+ const night=period==='night',evening=period==='evening';
+ const sky=night?'#263950':evening?'#c99378':period==='morning'?'#c5d8cb':'#b8d5c1';
+ const gloomy=['rain','storm','fog'].includes(weather);
+ p(18,12,143,127,'#809877');p(21,15,137,121,'#e9e1b2');p(25,19,129,113,night?'#435450':evening?'#b7b081':'#b8d5b0');
+ p(25,19,129,60,gloomy?(night?'#273342':'#92a6a4'):sky);
+ if(night){
+  if(!gloomy&&weather!=='cloud'&&weather!=='snow'){for(const [x,y] of [[34,27],[70,42],[100,25],[145,40],[53,57]])p(x,y,1,1,'#d7dfd4');oval(c,124,30,13,13,'#d7dcc5');oval(c,120,27,12,12,sky);}
+ }else if(!gloomy&&weather!=='snow'){oval(c,period==='morning'?43:evening?126:118,period==='morning'?54:evening?60:30,16,16,evening?'#e3ac71':'#f2d787');}
+ if(weather==='cloud'||gloomy||weather==='snow'){cloud(c,39,35,night?'#455660':gloomy?'#b0beb8':'#e8ead0');cloud(c,97,45,night?'#394a58':'#c0ccc3');}
+ else if(!night)cloud(c,68,35,'#e8ead0');
+ for(let i=0;i<5;i++){trunk(c,31+i*27,75,7,53);leafCluster(c,23+i*27,65+(i%2)*6,36,37,night?'#536b56':evening?'#8b985e':'#83a367',night?'#354e44':'#638951');}
+ p(25,119,129,13,night?'#4b6552':'#9bb879');
+ if(weather==='snow'){for(let i=0;i<5;i++)p(31+i*27,67+(i%2)*6,20,2,'#e7eadd');p(25,126,129,5,'#d8e1d6');}
+ if(weather==='fog'){p(25,67,129,4,'#dbe2cc68');p(25,99,129,5,'#dbe2cc88');}
+ p(86,19,4,113,'#e9e1b2');p(25,76,129,4,'#e9e1b2');p(13,136,153,6,'#8d7954');p(17,136,145,2,'#baa373');
+}
+function roomBackground(c,environment={period:'day',weather:null}){
   c.imageSmoothingEnabled=false;const p=pen(c);
   p(0,0,480,276,'#dfd9b5');for(let x=0;x<480;x+=32){p(x,0,1,207,'#cccaa5');p(x+2,0,1,207,'#eae6c6');}
   p(0,205,480,71,'#b8a777');p(0,205,480,4,'#978a62');for(let y=217;y<276;y+=22){p(0,y,480,1,'#a2936c');for(let x=(y%2)*30;x<480;x+=80)p(x,y,1,21,'#a2936c');}
-  // Open window onto a small summer forest.
-  p(28,22,119,114,'#809877');p(31,25,113,108,'#e9e1b2');p(35,29,105,100,'#b8d5b0');p(36,31,103,43,'#b8d5c1');oval(c,112,39,16,16,'#f2d787');cloud(c,52,38,'#e8ead0');
-  for(let i=0;i<4;i++){trunk(c,40+i*26,72,7,55);leafCluster(c,32+i*25,64+(i%2)*5,36,35,'#83a367','#638951');}
-  p(35,117,105,12,'#9bb879');p(86,29,4,100,'#e9e1b2');p(35,76,105,4,'#e9e1b2');p(23,132,129,6,'#8d7954');p(27,132,122,2,'#baa373');
+  roomWindow(c,environment);
   // Books, spare jelly and a hanging botanical print.
   p(310,25,125,6,'#765c42');p(318,31,4,7,'#997b52');p(425,31,4,7,'#997b52');
   ['#81935f','#af8662','#748c86','#c6aa70'].forEach((color,i)=>{p(318+i*13,3+i%2*3,11,22-i%2*3,color);p(321+i*13,7+i%2*3,2,14,'#e0d6a5');});jelly(c,384,11);jelly(c,409,11);
@@ -144,6 +159,11 @@ function roomBackground(c){
   // Glazing, edges, shadows. Kept restrained to preserve the insect outline.
   p(69,104,3,113,'#e0e8c6');p(322,104,3,113,'#96b18b');p(75,110,2,48,'#e0e8c6');p(80,110,1,17,'#e0e8c6');p(64,219,266,5,'#47664b');p(70,219,254,2,'#7f9b6c');
   p(357,203,38,21,'#9a7952');p(359,201,34,5,'#c3a16e');p(365,209,22,2,'#d8be88');p(367,214,18,2,'#bc9f71');plant(c,399,175);
+  const tint=({morning:'#e6c99112',evening:'#954d3428',night:'#12243c65'})[environment.period];if(tint)p(0,0,480,276,tint);
+  if(environment.period==='night'){
+   // A small desk lamp leaves the terrarium readable at night.
+   p(450,157,3,65,'#796c50');p(438,220,25,4,'#9c8860');poly(c,[[438,156],[462,156],[458,143],[442,143]],'#dab77a');p(443,157,14,2,'#f6dd9d');
+  }
 }
 function forestBackground(c,location='oak'){
   c.imageSmoothingEnabled=false;const deep=['deep','valley','island'].includes(location),grove=location==='grove',p=pen(c);forestBackdrop(c,480,276,deep,grove);
@@ -271,8 +291,17 @@ function drawSide(c,b,x,ground,time,face=1,scale=null){
  if(!b)return;const sz=scale??(.3+b.length/90),frame=Math.floor(time/170)%2;const s=sideSprite(b.species,b.sex,frame);
  c.save();c.translate(Math.round(x),Math.round(ground));c.scale(face*sz,sz);c.drawImage(s,-44,-44);c.restore();
 }
-export function drawRoom(c,b,time=0){
- c.imageSmoothingEnabled=false;c.drawImage(cachedBackground('room',roomBackground),0,0);
+export function drawRoom(c,b,time=0,environment={period:'day',weather:null}){
+ c.imageSmoothingEnabled=false;c.drawImage(cachedBackground(`room-${environment.period}-${environment.weather||'unknown'}`,ctx=>roomBackground(ctx,environment)),0,0);
+ if(['rain','snow','storm'].includes(environment.weather)){
+  c.save();c.beginPath();c.moveTo(25,19);c.lineTo(154,19);c.lineTo(154,84);c.lineTo(64,84);c.lineTo(64,132);c.lineTo(25,132);c.closePath();c.clip();
+  const snow=environment.weather==='snow',p=pen(c);
+  for(let i=0;i<(snow?18:28);i++){
+   const x=25+(i*37+Math.floor(time/(snow?170:45)))%129,y=19+(i*29+Math.floor(time/(snow?75:13)))%113;
+   if(snow)p(x,y,i%3===0?2:1,2,'#e4ecdd');else line(c,[[x,y],[x-2,y+5]],environment.period==='night'?'#728f9a':'#6b919c',1);
+  }
+  c.restore();
+ }
  const life=stepHabitat(b,time);if(!life)return;
  c.save();c.beginPath();c.rect(72,106,250,111);c.clip();c.globalAlpha=life.alpha;
  const eating=life.mode==='eat',bob=eating?Math.floor(time/380)%2:0;
