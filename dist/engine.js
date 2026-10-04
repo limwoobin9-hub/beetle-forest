@@ -3,22 +3,24 @@ import {SPECIES,LOCATIONS,sizeRange,captureDifficulty} from './world.js';
 export {SPECIES,LOCATIONS,captureDifficulty};
 import {RESEARCH_REQUESTS,currentResearch} from './research.js';
 import {DAY_MS,FAST_DURATIONS,growthDurations,growthDays,stageIndex,stageName,convertGrowthAge} from './time.js';
+import {RELAX_DAYS,DRY_DAYS,CASE_SLOTS,newSpecimenWork,moveSpecimen,tickSpecimen,validSpecimenWork} from './specimens.js';
 export const clamp = (v, min = 0, max = 100) => Math.max(min, Math.min(max, v));
 export const round = v => Math.round(v * 10) / 10;
+export const CRITICAL_HEALTH=20,CRITICAL_DAYS=3,SPECIMEN_CASE_COST=80;
 const uuid = () => typeof crypto.randomUUID==='function'?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
 export function createBug(species, sex, genetic, day, source = '채집', parents = null, quality = 1) {
   const range = sizeRange(species,sex,!!parents);
   const trait = clamp(genetic, 0, 1);
   const expression = Math.pow(parents?clamp(trait*.8+clamp(quality,0,1.15)/1.15*.2,0,1):trait,1.6);
   const length = round(range[0] + expression * (range[1] - range[0]));
-  return { id: uuid(), species, sex, genetic: trait, length, name: SPECIES[species].name, hunger: 76, health: 95, hygiene: 90, born: day, source, parents, wins: 0, losses: 0, bredDay: -99, fightDay: -99, favorite:false };
+  return { id: uuid(), species, sex, genetic: trait, length, name: SPECIES[species].name, hunger: 76, health: 95, hygiene: 90, born: day, source, parents, wins: 0, losses: 0, bredDay: -99, fightDay: -99, favorite:false,criticalDays:0 };
 }
 export function newGame(now=Date.now()) {
-  return {version:4,settings:{realTime:false,realGrowth:false},clock:{anchorAt:now},totalBreedings:0,totalEmergences:0,traps:[],researchClaimed:[],day:1,coins:350,xp:0,inventory:{banana:6,basic_mat:4},jelly:6,substrate:4,energy:5,bugs:[],broods:[],discoveries:[],captures:0,records:{},fight:null,expedition:null,log:[]};
+  return {version:5,settings:{realTime:false,realGrowth:false},clock:{anchorAt:now},totalBreedings:0,totalEmergences:0,traps:[],researchClaimed:[],memorials:[],specimenCases:[{id:'case-1',name:'표본 케이스 1'}],careAidDay:0,day:1,coins:350,xp:0,inventory:{banana:6,basic_mat:4},jelly:6,substrate:4,energy:5,bugs:[],broods:[],discoveries:[],captures:0,records:{},fight:null,expedition:null,log:[]};
 }
 export function migrateSave(state,now=Date.now()){
-  if(state.version===4)return state;
-  if(![1,2,3].includes(state.version))return state;
+  if(state.version===5)return state;
+  if(![1,2,3,4].includes(state.version))return state;
   if(state.version===1){
   const defaults=state.bugs.filter(b=>b.source==='첫 친구');
   state.bugs=state.bugs.filter(b=>b.source!=='첫 친구');
@@ -40,9 +42,10 @@ export function migrateSave(state,now=Date.now()){
   for(const sex of ['male','female']){const key='king-'+sex;if(state.records[key]>sizeRange('king',sex,false)[1])state.records[key]=Math.max(0,...state.bugs.filter(b=>b.species==='king'&&b.sex===sex).map(b=>b.length));}
   state.traps=[];state.researchClaimed=[];state.fight=null;
   }
-  state.settings={realTime:false,realGrowth:false};state.clock={anchorAt:now};
-  state.broods.forEach(b=>b.growthMode='fast');state.bugs.forEach(b=>b.favorite=!!b.favorite);
-  state.version=4;return state;
+  if(state.version<4){state.settings={realTime:false,realGrowth:false};state.clock={anchorAt:now};state.broods.forEach(b=>b.growthMode='fast');state.bugs.forEach(b=>b.favorite=!!b.favorite);}
+  state.memorials=[];state.specimenCases=[{id:'case-1',name:'표본 케이스 1'}];state.careAidDay=0;state.bugs.forEach(b=>b.criticalDays=0);
+  if(state.expedition?.encounter)state.expedition.encounter.bug.criticalDays=0;
+  state.version=5;return state;
 }
 export function gainXP(state,n){const old=keeperLevel(state);state.xp+=n;const level=keeperLevel(state);if(level>old)note(state,`사육 레벨 ${level} 도달 · 상점 개방 조건 확인`);}
 function spend(state,id,n=1){if(!PRODUCTS[id]||(state.inventory[id]||0)<n)throw new Error('해당 상품의 재고가 부족합니다.');state.inventory[id]-=n;syncSupplies(state);}
@@ -61,6 +64,7 @@ export function care(state,id,kind,itemId){
     if(b.hygiene>=100)throw new Error('청결이 이미 100입니다.');
     spend(state,item);b.hygiene=100;b.health=clamp(b.health+8);b.beddingDays=product.duration;b.beddingDecay=product.hygiene;b.matId=item;
   }else throw new Error('알 수 없는 돌봄입니다.');
+  if(b.health>CRITICAL_HEALTH)b.criticalDays=0;
   if(b['xp_'+kind]!==state.day){gainXP(state,5);b['xp_'+kind]=state.day;}
   note(state,`${b.name} · ${product.name} 사용`);return b;
 }
@@ -149,7 +153,10 @@ export function advanceDay(state){
 function applyDay(state){
   state.fight=null;
   state.day++;state.energy=5;let bonus=35;const events=[];
-  for(const b of state.bugs){b.hunger=clamp(b.hunger-(b.dietDays>0?b.dietDecay:18));b.hygiene=clamp(b.hygiene-(b.beddingDays>0?b.beddingDecay:12));b.dietDays=Math.max(0,(b.dietDays||0)-1);b.beddingDays=Math.max(0,(b.beddingDays||0)-1);b.health=clamp(b.health+(b.hunger<25?-10:b.hygiene<25?-7:3));if(b.health>=75&&b.hunger>=40)bonus+=4;}
+  const dead=[];
+  for(const b of state.bugs){b.hunger=clamp(b.hunger-(b.dietDays>0?b.dietDecay:18));b.hygiene=clamp(b.hygiene-(b.beddingDays>0?b.beddingDecay:12));b.dietDays=Math.max(0,(b.dietDays||0)-1);b.beddingDays=Math.max(0,(b.beddingDays||0)-1);b.health=clamp(b.health+(b.hunger<25?-10:b.hygiene<25?-7:3));b.criticalDays=b.health<=CRITICAL_HEALTH?(b.criticalDays||0)+1:0;if(b.criticalDays>=CRITICAL_DAYS){dead.push(b.id);state.memorials.push({id:b.id,bug:structuredClone(b),diedDay:state.day,status:'stored',preparedDay:null,readyDay:null,mountedDay:null,caseId:null,slot:null,work:null,caption:''});events.push(`${b.name} 사망 · 건강 ${CRITICAL_HEALTH} 이하 ${CRITICAL_DAYS}일 연속 · 보관함으로 이동`);}else if(b.health>=75&&b.hunger>=40)bonus+=4;}
+  state.bugs=state.bugs.filter(b=>!dead.includes(b.id));
+  for(const m of state.memorials){const progress=tickSpecimen(m,state.day);if(progress)events.push(`${m.bug.name} · ${progress}`);}
   state.coins+=Math.min(bonus,65);
   const ready=[];
   for(const b of state.broods){
@@ -195,6 +202,35 @@ export function setTimeOptions(state,{realTime,realGrowth},now=Date.now()){
  state.settings={realTime,realGrowth};note(state,`시간 설정 · ${realTime?'현실 시간':'버튼 진행'} · ${realGrowth?'실제 성장 기간':'빠른 성장'}`);return state.settings;
 }
 export function toggleFavorite(state,id){const b=bugOf(state,id);b.favorite=!b.favorite;return b;}
+export function careAidStatus(state){
+ const jelly=state.coins<PRODUCTS.banana.price?Math.max(0,state.bugs.filter(b=>b.hunger<40).length-state.jelly):0;
+ const matNeed=state.bugs.filter(b=>b.hygiene<40).length+state.broods.filter(b=>isLarva(broodStage(b))&&b.food<40).length;
+ const mat=state.coins<PRODUCTS.basic_mat.price?Math.max(0,matNeed-state.substrate):0;
+ return {eligible:state.careAidDay!==state.day&&(jelly>0||mat>0),jelly,mat,claimed:state.careAidDay===state.day};
+}
+export function claimCareAid(state){
+ const aid=careAidStatus(state);if(!aid.eligible)throw new Error(aid.claimed?'오늘의 기초 사육 지원을 이미 받았습니다.':'잎사귀와 용품이 부족한 돌봄 대상이 있을 때 받을 수 있습니다.');
+ state.inventory.banana=(state.inventory.banana||0)+aid.jelly;state.inventory.basic_mat=(state.inventory.basic_mat||0)+aid.mat;syncSupplies(state);state.careAidDay=state.day;
+ note(state,`기초 사육 지원 · 젤리 ${aid.jelly}개 · 매트 ${aid.mat}개`);return aid;
+}
+function memorialOf(state,id){const m=state.memorials.find(m=>m.id===id);if(!m)throw new Error('보관 중인 개체를 선택해 주세요.');return m;}
+export function prepareSpecimen(state,id){
+ const m=memorialOf(state,id);if(m.status==='stored'){m.status='working';m.work=newSpecimenWork();note(state,`${m.bug.name} · 표본 작업대에 놓음`);}if(m.status==='mounted')throw new Error('이미 케이스에 보관된 표본입니다.');return m;
+}
+export function workSpecimen(state,id,task,point,payload={}){
+ const m=memorialOf(state,id),previous=m.work?.phase;moveSpecimen(m,task,point,state.day,payload);
+ if(m.work.phase!==previous)note(state,`${m.bug.name} · 표본 작업 ${m.work.phase==='relaxing'?'연화 대기':m.work.phase==='drying'?'건조 대기':m.work.phase==='casing'?'라벨 부착 완료':'단계 진행'}`);return m;
+}
+export function storeSpecimen(state,id,caseId,slot){
+ const m=memorialOf(state,id);if(m.status!=='casing'||m.work?.phase!=='casing')throw new Error('연화·핀 고정·정리·건조·라벨 작업을 먼저 마쳐 주세요.');
+ if(!state.specimenCases.some(c=>c.id===caseId)||!Number.isInteger(slot)||slot<0||slot>=CASE_SLOTS)throw new Error('표본 케이스의 빈 칸을 선택해 주세요.');
+ if(state.memorials.some(m=>m.caseId===caseId&&m.slot===slot))throw new Error('이미 표본이 보관된 칸입니다.');
+ m.caseId=caseId;m.slot=slot;m.status='mounted';m.work.phase='done';m.mountedDay=state.day;note(state,`${m.bug.name} · 표본 케이스 보관 · 생전 기록 보존`);return m;
+}
+export function addSpecimenCase(state){
+ if(state.coins<SPECIMEN_CASE_COST)throw new Error(`케이스 추가에 ${SPECIMEN_CASE_COST} 잎사귀가 필요합니다.`);
+ state.coins-=SPECIMEN_CASE_COST;const c={id:uuid(),name:`표본 케이스 ${state.specimenCases.length+1}`};state.specimenCases.push(c);note(state,c.name+' 추가');return c;
+}
 export function combatRating(b){
  const condition=(.65+b.health/100*.35)*(.85+b.hunger/100*.15);
  return Math.pow(b.length/45,2.2)*SPECIES[b.species].power*SPECIES[b.species].grip*condition*(1+(b.trainingGrip||0)*.005);
@@ -265,9 +301,9 @@ export function checkTrap(state,id,random=Math.random){
 export function claimResearch(state,id){const r=currentResearch(state);if(!r||r.id!==id||!r.complete(state))throw new Error('현재 의뢰의 조건을 먼저 충족하세요.');state.researchClaimed.push(id);state.coins+=r.coins;gainXP(state,r.xp);note(state,`연구소 의뢰 완료 · ${r.name} · +${r.coins} 잎사귀`);return r;}
 export function validateSave(s){
   const finite=(n,min,max)=>Number.isFinite(n)&&n>=min&&n<=max;
-  if(!s||![1,2,3,4].includes(s.version)||!finite(s.day,1,1000000)||!Number.isInteger(s.day)||!finite(s.coins,0,1e9)||!finite(s.jelly,0,1e6)||!finite(s.substrate,0,1e6)||!finite(s.energy,0,5))return false;
+  if(!s||![1,2,3,4,5].includes(s.version)||!finite(s.day,1,1000000)||!Number.isInteger(s.day)||!finite(s.coins,0,1e9)||!finite(s.jelly,0,1e6)||!finite(s.substrate,0,1e6)||!finite(s.energy,0,5))return false;
   if(!Array.isArray(s.bugs)||s.bugs.length>48||!Array.isArray(s.broods)||s.broods.length>3||s.bugs.length+s.broods.length*3>48||!Array.isArray(s.log)||!Array.isArray(s.discoveries)||!s.records||!finite(s.captures,0,1e9))return false;
-  if(s.version===4&&(!s.settings||typeof s.settings.realTime!=='boolean'||typeof s.settings.realGrowth!=='boolean'||s.settings.realGrowth&&!s.settings.realTime||!s.clock||!finite(s.clock.anchorAt,0,8.64e15)))return false;
+  if(s.version>=4&&(!s.settings||typeof s.settings.realTime!=='boolean'||typeof s.settings.realGrowth!=='boolean'||s.settings.realGrowth&&!s.settings.realTime||!s.clock||!finite(s.clock.anchorAt,0,8.64e15)))return false;
   const validBug=b=>b&&typeof b.id==='string'&&Object.hasOwn(SPECIES,b.species)&&['male','female'].includes(b.sex)&&typeof b.name==='string'&&b.name.length<=60&&finite(b.length,1,100)&&finite(b.genetic,0,1)&&['hunger','health','hygiene'].every(k=>finite(b[k],0,100))&&finite(b.born,1,s.day)&&finite(b.bredDay,-99,s.day)&&finite(b.fightDay,-99,s.day)&&finite(b.wins,0,1e6)&&finite(b.losses,0,1e6)&&['dietDays','beddingDays'].every(k=>b[k]===undefined||finite(b[k],0,4))&&['dietDecay','beddingDecay'].every(k=>b[k]===undefined||finite(b[k],0,100))&&['trainingGrip','trainingStamina'].every(k=>b[k]===undefined||finite(b[k],0,12))&&(b.favorite===undefined||typeof b.favorite==='boolean');
   if(s.version>=2){
     if(!finite(s.xp,0,1e9)||!s.inventory||typeof s.inventory!=='object'||Array.isArray(s.inventory)||Object.entries(s.inventory).some(([id,n])=>!Object.hasOwn(PRODUCTS,id)||!finite(n,0,1e6)||!Number.isInteger(n)))return false;
@@ -276,14 +312,31 @@ export function validateSave(s){
   if(s.version>=3&&(!finite(s.totalBreedings,0,1e9)||!finite(s.totalEmergences,0,1e9)))return false;
   if(s.version>=3&&(!Array.isArray(s.traps)||s.traps.length>2||s.traps.some(t=>typeof t.id!=='string'||!LOCATIONS[t.location]||PRODUCTS[t.itemId]?.kind!=='trap'||!finite(t.placed,1,s.day)||t.ready!==t.placed+1)||!Array.isArray(s.researchClaimed)||new Set(s.researchClaimed).size!==s.researchClaimed.length||s.researchClaimed.some(id=>!RESEARCH_REQUESTS.some(r=>r.id===id))))return false;
   const ids=new Set();
-  for(const b of s.bugs){if(!validBug(b)||ids.has(b.id))return false;ids.add(b.id);}
+  for(const b of s.bugs){if(!validBug(b)||ids.has(b.id)||s.version>=5&&(!Number.isInteger(b.criticalDays)||!finite(b.criticalDays,0,CRITICAL_DAYS-1)))return false;ids.add(b.id);}
+  if(s.version>=5){
+   if(!Array.isArray(s.memorials)||!Number.isInteger(s.careAidDay)||!finite(s.careAidDay,0,s.day)||!Array.isArray(s.specimenCases)||!s.specimenCases.length||s.specimenCases.some(c=>!c||typeof c.id!=='string'||typeof c.name!=='string'||!c.name||c.name.length>40)||new Set(s.specimenCases.map(c=>c.id)).size!==s.specimenCases.length)return false;
+   const archivedIds=new Set(),occupied=new Set();
+   for(const m of s.memorials){
+    if(!m||typeof m.id!=='string'||m.id!==m.bug?.id||ids.has(m.id)||archivedIds.has(m.id)||!validBug(m.bug)||m.bug.criticalDays!==CRITICAL_DAYS||m.bug.health>CRITICAL_HEALTH||!Number.isInteger(m.diedDay)||!finite(m.diedDay,m.bug.born,s.day)||!['stored','working','relaxing','drying','casing','mounted'].includes(m.status)||typeof m.caption!=='string'||m.caption.length>80)return false;
+    archivedIds.add(m.id);
+    if(m.status==='stored'){if(m.work!==null||m.preparedDay!==null||m.readyDay!==null)return false;}
+    else {
+     if(!validSpecimenWork(m.work))return false;const phase=m.work.phase;
+     if(m.status==='working'&&!['chamber','pinning','posing','cleanup','labeling'].includes(phase)||m.status==='relaxing'&&phase!=='relaxing'||m.status==='drying'&&phase!=='drying'||m.status==='casing'&&phase!=='casing'||m.status==='mounted'&&phase!=='done')return false;
+     if(phase==='chamber'){if(m.preparedDay!==null||m.readyDay!==null)return false;}
+     else {if(!Number.isInteger(m.preparedDay)||!finite(m.preparedDay,m.diedDay,s.day)||!Number.isInteger(m.readyDay)||m.readyDay!==m.preparedDay+(['relaxing','pinning','posing'].includes(phase)?RELAX_DAYS:DRY_DAYS))return false;if(['relaxing','drying'].includes(phase)?s.day>=m.readyDay:s.day<m.readyDay)return false;}
+    }
+    if(m.status==='mounted'){const key=m.caseId+':'+m.slot;if(!s.specimenCases.some(c=>c.id===m.caseId)||!Number.isInteger(m.slot)||!finite(m.slot,0,CASE_SLOTS-1)||occupied.has(key)||!Number.isInteger(m.mountedDay)||!finite(m.mountedDay,m.readyDay,s.day))return false;occupied.add(key);}
+    else if(m.caseId!==null||m.slot!==null||m.mountedDay!==null)return false;
+   }
+  }
   if(!s.discoveries.every(sp=>Object.hasOwn(SPECIES,sp))||s.log.some(l=>!l||!finite(l.day,1,s.day)||typeof l.text!=='string'||l.text.length>500)||s.log.length>40)return false;
   if(Object.entries(s.records).some(([k,v])=>!Object.keys(SPECIES).flatMap(sp=>[sp+'-male',sp+'-female']).includes(k)||!finite(v,0,100)))return false;
   if(s.fight){const f=s.fight;if(s.version>=3){
    if(f.model!==3||!ids.has(f.bugId)||!validBug(f.rival)||!finite(f.elapsed,0,36)||!Number.isInteger(f.elapsed)||!finite(f.position,-100,100)||!finite(f.playerStamina,0,120)||!finite(f.opponentStamina,0,120)||typeof f.finished!=='boolean'||!Array.isArray(f.events)||f.events.length>10||f.events.some(e=>!finite(e.step,1,36)||typeof e.playerActs!=='boolean'||typeof e.text!=='string'))return false;
   }else{const moves=['push','lift','guard'];if(!ids.has(f.bugId)||!f.rival||!Object.hasOwn(SPECIES,f.rival.species)||!finite(f.rival.length,1,100)||!finite(f.rival.health,0,100)||!finite(f.rival.hunger,0,100)||typeof f.rival.name!=='string'||!finite(f.player,0,2)||!finite(f.opponent,0,2)||!Array.isArray(f.rounds)||f.rounds.length>3||f.rounds.some(r=>!moves.includes(r.move)||!moves.includes(r.rivalMove)||typeof r.won!=='boolean')||typeof f.finished!=='boolean'||f.player+f.opponent!==f.rounds.length||f.finished!==(f.player===2||f.opponent===2))return false;}}
   const broodIds=new Set();
-  return s.broods.every(b=>{if(!b||s.version>=2&&!compatibleFood(PRODUCTS[b.medium],b.species)||typeof b.id!=='string'||broodIds.has(b.id)||!Object.hasOwn(SPECIES,b.species)||!finite(b.started,1,s.day)||!finite(b.age,0,s.version===1?7:s.version<4?14:growthDays(b.species,b.growthMode)-1e-9)||s.version<4&&!Number.isInteger(b.age)||s.version===4&&(!['fast','natural'].includes(b.growthMode)||b.growthMode!==(s.settings.realGrowth?'natural':'fast'))||!finite(b.food,0,100)||!finite(b.qualitySum,0,s.version===1?4:s.version<4?12:18)||!finite(b.qualityDays,0,s.version===1?4:s.version<4?10:15)||s.version<4&&!Number.isInteger(b.qualityDays)||!Array.isArray(b.parents)||b.parents.length!==2||!b.parents.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&p.name.length<=60&&finite(p.length,1,100)&&p.species===b.species&&['male','female'].includes(p.sex))||!Array.isArray(b.children)||b.children.length!==3||!b.children.every(c=>['male','female'].includes(c.sex)&&finite(c.genetic,0,1)))return false;broodIds.add(b.id);return true;});
+  return s.broods.every(b=>{if(!b||s.version>=2&&!compatibleFood(PRODUCTS[b.medium],b.species)||typeof b.id!=='string'||broodIds.has(b.id)||!Object.hasOwn(SPECIES,b.species)||!finite(b.started,1,s.day)||!finite(b.age,0,s.version===1?7:s.version<4?14:growthDays(b.species,b.growthMode)-1e-9)||s.version<4&&!Number.isInteger(b.age)||s.version>=4&&(!['fast','natural'].includes(b.growthMode)||b.growthMode!==(s.settings.realGrowth?'natural':'fast'))||!finite(b.food,0,100)||!finite(b.qualitySum,0,s.version===1?4:s.version<4?12:18)||!finite(b.qualityDays,0,s.version===1?4:s.version<4?10:15)||s.version<4&&!Number.isInteger(b.qualityDays)||!Array.isArray(b.parents)||b.parents.length!==2||!b.parents.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&p.name.length<=60&&finite(p.length,1,100)&&p.species===b.species&&['male','female'].includes(p.sex))||!Array.isArray(b.children)||b.children.length!==3||!b.children.every(c=>['male','female'].includes(c.sex)&&finite(c.genetic,0,1)))return false;broodIds.add(b.id);return true;});
 }
 export function release(state,id){
   const b=bugOf(state,id);if(state.fight?.bugId===id)throw new Error('투곤에 참가 중인 개체는 놓아줄 수 없어요.');

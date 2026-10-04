@@ -56,8 +56,8 @@ test('all species pass through egg, three instars, pupa and adult',()=>{
    if(['1령','2령','3령'].includes(broodStage(b))&&b.food<100)careBrood(s,b.id,'basic_mat');
    advanceDay(s);if(s.broods.length)seen.add(broodStage(b));valid(s);
   }
-  assert.deepEqual([...seen],['알','1령','2령','3령','번데기']);assert.equal(s.broods.length,0);assert.equal(s.bugs.length,5);
-  assert.ok(s.bugs.slice(2).every(b=>b.name===SPECIES[species].name&&b.parents.length===2));
+  assert.deepEqual([...seen],['알','1령','2령','3령','번데기']);assert.equal(s.broods.length,0);assert.equal(s.bugs.length,3);assert.equal(s.memorials.length,2);
+  assert.ok(s.bugs.every(b=>b.name===SPECIES[species].name&&b.parents.length===2));
  }
 });
 test('larval food checks species, instar and nutritional suitability',()=>{
@@ -90,7 +90,7 @@ test('legacy saves lose default named insects while retaining collected insects 
  const starter=createBug('king','male',.48,1,'첫 친구');starter.name='밤톨';const collected=createBug('flat','female',.8,1,'참나무 숲');
  const s={version:1,day:6,coins:280,jelly:16,substrate:8,energy:5,bugs:[starter,collected],broods:[],discoveries:['king','flat','rhino'],captures:1,records:{'king-male':starter.length,'flat-female':collected.length},fight:null,log:[{day:1,text:'여섯 친구와 여름을 시작해요.'}]};
  s.broods.push({id:'legacy-brood',species:'king',started:1,age:5,food:50,qualitySum:2,qualityDays:3,parents:[{...starter},{...createBug('king','female',.5,1,'첫 친구')}],children:[{sex:'male',genetic:.5},{sex:'female',genetic:.5},{sex:'male',genetic:.5}]});
- valid(s);migrateSave(s);assert.equal(s.version,4);assert.deepEqual(s.bugs.map(b=>b.id),[collected.id]);assert.equal(s.records['king-male'],undefined);assert.equal(s.records['flat-female'],collected.length);assert.equal(s.broods[0].age,9);assert.equal(s.log.length,0);assert.equal(s.inventory.banana,16);valid(s);
+ valid(s);migrateSave(s);assert.equal(s.version,5);assert.deepEqual(s.bugs.map(b=>b.id),[collected.id]);assert.equal(s.records['king-male'],undefined);assert.equal(s.records['flat-female'],collected.length);assert.equal(s.broods[0].age,9);assert.equal(s.log.length,0);assert.equal(s.inventory.banana,16);valid(s);
 });
 test('malformed encounter and player coordinates are rejected before restoring a save',()=>{
  const s=newGame();encounter(s);s.expedition.encounter.bug.hunger=undefined;assert.equal(validateSave(s),false);
@@ -173,7 +173,7 @@ test('natural schedules take months and every species persists until its emergen
   const s=newGame(now),[m,f]=parents(s,species);setTimeOptions(s,{realTime:true,realGrowth:true},now);const brood=breed(s,m.id,f.id,random),days=growthDays(species,'natural');
   assert.ok(days>=180&&days<=365);assert.equal(syncRealTime(s,now+8*DAY_MS).days,8);assert.equal(s.broods.length,1);assert.equal(s.totalEmergences,0);valid(s);
   syncRealTime(s,now+(days-1)*DAY_MS);assert.equal(s.broods.length,1);assert.equal(broodStage(brood),'번데기');valid(s);
-  syncRealTime(s,now+days*DAY_MS);assert.equal(s.broods.length,0);assert.equal(s.totalEmergences,1);assert.equal(s.bugs.length,5);valid(s);
+  syncRealTime(s,now+days*DAY_MS);assert.equal(s.broods.length,0);assert.equal(s.totalEmergences,1);assert.equal(s.bugs.length,3);assert.equal(s.memorials.length,2);valid(s);
  }
 });
 test('switching growth modes preserves the current instar and progress, and disabling real time resumes buttons',()=>{

@@ -96,6 +96,12 @@ const ICONS={
 const PAL={g:'#547a47',G:'#8eae63',b:'#3f513a',Y:'#e9c57d',w:'#fff9dd',r:'#99554a',R:'#ce8060',B:'#789bac'};
 export function icon(name){const rows=ICONS[name]||ICONS.bug,cvs=document.createElement('canvas');cvs.width=12;cvs.height=12;const c=cvs.getContext('2d');rows.forEach((row,y)=>[...row].forEach((v,x)=>{if(PAL[v]){c.fillStyle=PAL[v];c.fillRect(x,y,1,1);}}));return cvs.toDataURL();}
 export function spriteURL(species,sex){const key=species+sex;if(!urls.has(key))urls.set(key,bugSprite(species,sex).toDataURL());return urls.get(key);}
+export function specimenBodyURL(species,sex){
+ const key='specimen-body-'+species+sex;if(urls.has(key))return urls.get(key);
+ const canvas=document.createElement('canvas');canvas.width=48;canvas.height=72;const c=canvas.getContext('2d');c.imageSmoothingEnabled=false;c.drawImage(bugSprite(species,sex),0,0);
+ for(let y=0;y<72;y++){const [left,right]=y<18?[8,40]:y<60?[12,36]:y<68?[14,34]:[24,24];c.clearRect(0,y,left,1);c.clearRect(right,y,48-right,1);}
+ const url=canvas.toDataURL();urls.set(key,url);return url;
+}
 function cloud(c,x,y,color){const p=pen(c);p(x,y+4,40,5,color);p(x+6,y,21,9,color);p(x+26,y+2,9,7,color);}
 function leafCluster(c,x,y,w,h,light='#648a47',shade='#43673b'){
   poly(c,[[x+w*.2,y],[x+w*.7,y],[x+w*.7,y+3],[x+w*.9,y+3],[x+w*.9,y+8],[x+w,y+8],[x+w,y+h*.7],[x+w*.85,y+h*.7],[x+w*.85,y+h],[x+w*.15,y+h],[x+w*.15,y+h*.8],[x,y+h*.8],[x,y+h*.3],[x+w*.2,y+h*.3]],shade);
