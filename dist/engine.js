@@ -1,4 +1,4 @@
-import {PRODUCTS,keeperLevel,compatibleFood,syncSupplies,shopAccess,isLarva} from './catalog.js';
+import {PRODUCTS,keeperLevel,compatibleFood,syncSupplies,shopAccess,isLarva,isAdultBedding,adultBeddingItems,adultBeddingCount} from './catalog.js';
 import {SPECIES,LOCATIONS,sizeRange,captureDifficulty} from './world.js';
 export {SPECIES,LOCATIONS,captureDifficulty};
 import {RESEARCH_REQUESTS,currentResearch} from './research.js';
@@ -68,8 +68,10 @@ function bugOf(state,id) { const b=state.bugs.find(b=>b.id===id); if(!b) throw n
 export function care(state,id,kind,itemId){
   const b=bugOf(state,id);
   if(state.fight?.bugId===id&&!state.fight.finished)throw new Error('경기 종료 후 돌볼 수 있습니다.');
-  const item=itemId||available(state,kind==='jelly'?'jelly':'mat');const product=PRODUCTS[item];
-  if(!product||product.kind!==(kind==='jelly'?'jelly':'mat'))throw new Error('사용할 젤리 또는 매트를 선택하세요.');
+  if(!['jelly','clean'].includes(kind))throw new Error('알 수 없는 돌봄입니다.');
+  const item=itemId||(kind==='clean'?adultBeddingItems(state)[0]?.[0]:available(state,'jelly'));const product=PRODUCTS[item];
+  if(kind==='clean'&&!isAdultBedding(product))throw new Error('성충 교체에는 참나무 사육매트 또는 코코넛 깔개매트가 필요합니다. 유충용 매트는 번식통에서 사용하세요.');
+  if(kind==='jelly'&&product?.kind!=='jelly')throw new Error('사용할 젤리를 선택하세요.');
   if(kind==='jelly'){
     if(b.hunger>=100&&b.health>=100)throw new Error('포만감과 건강이 이미 100입니다.');
     spend(state,item);b.hunger=100;b.health=clamp(b.health+product.health);b.dietDays=product.duration;b.dietDecay=product.decay;b.jellyId=item;
@@ -227,8 +229,11 @@ export function setTimeOptions(state,{realTime,realGrowth},now=Date.now()){
 export function toggleFavorite(state,id){const b=bugOf(state,id);b.favorite=!b.favorite;return b;}
 export function careAidStatus(state){
  const jelly=state.coins<PRODUCTS.banana.price?Math.max(0,state.bugs.filter(b=>b.hunger<40).length-state.jelly):0;
- const matNeed=state.bugs.filter(b=>b.hygiene<40).length+state.broods.filter(b=>isLarva(broodStage(b))&&b.food<40).length;
- const mat=state.coins<PRODUCTS.basic_mat.price?Math.max(0,matNeed-state.substrate):0;
+ const adultNeed=state.bugs.filter(b=>b.hygiene<40).length,adultUsed=Math.min(adultNeed,adultBeddingCount(state));
+ const beddingOnly=adultBeddingItems(state).filter(([,p])=>!p.food).reduce((n,[id])=>n+state.inventory[id],0);
+ const larvalNeed=state.broods.filter(b=>isLarva(broodStage(b))&&b.food<40).length;
+ const larvalSupply=Object.entries(state.inventory).reduce((n,[id,count])=>n+(PRODUCTS[id]?.kind==='mat'&&PRODUCTS[id].food?count:0),0)-Math.max(0,adultUsed-beddingOnly);
+ const mat=state.coins<PRODUCTS.basic_mat.price?adultNeed-adultUsed+Math.max(0,larvalNeed-larvalSupply):0;
  return {eligible:state.careAidDay!==state.day&&(jelly>0||mat>0),jelly,mat,claimed:state.careAidDay===state.day};
 }
 export function claimCareAid(state){

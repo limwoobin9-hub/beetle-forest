@@ -9,8 +9,8 @@ export const PRODUCTS = {
  banana:{name:'바나나 젤리',kind:'jelly',area:'basic',price:40,qty:6,color:'#e6bb53',health:8,decay:18,duration:1,effect:'포만감 100 · 건강 +8'},
  brown_sugar:{name:'흑당 젤리',kind:'jelly',area:'basic',price:50,qty:6,color:'#815240',health:10,decay:16,duration:2,effect:'건강 +10 · 2일간 포만감 감소 16'},
  fruit_mix:{name:'과일 믹스 젤리',kind:'jelly',area:'basic',price:55,qty:6,color:'#d57858',health:12,decay:18,duration:1,effect:'포만감 100 · 건강 +12'},
- basic_mat:{name:'참나무 사육매트',kind:'mat',area:'basic',price:55,qty:4,color:'#95724b',food:0.72,hygiene:12,duration:2,effect:'성충 청소 · 전 종 애벌레 먹이'},
- coconut:{name:'코코넛 깔개매트',kind:'mat',area:'basic',price:45,qty:5,color:'#b89667',food:0,hygiene:10,duration:3,effect:'성충 청결 100 · 3일간 청결 감소 10'},
+ basic_mat:{name:'참나무 사육매트',kind:'mat',adultBedding:true,area:'basic',price:55,qty:4,color:'#95724b',food:0.72,hygiene:12,duration:2,effect:'성충 청소 · 전 종 애벌레 먹이'},
+ coconut:{name:'코코넛 깔개매트',kind:'mat',adultBedding:true,area:'basic',price:45,qty:5,color:'#b89667',food:0,hygiene:10,duration:3,effect:'성충 청결 100 · 3일간 청결 감소 10'},
  honey:{name:'허니 젤리',kind:'jelly',area:'nutrition',price:90,qty:6,color:'#d89f32',health:14,decay:14,duration:2,effect:'건강 +14 · 2일간 포만감 감소 14'},
  protein:{name:'고단백 화이트 젤리',kind:'jelly',area:'nutrition',price:110,qty:6,color:'#eee5c0',health:20,decay:16,duration:2,effect:'포만감 100 · 건강 +20'},
  probiotic:{name:'유산균 젤리',kind:'jelly',area:'nutrition',price:100,qty:6,color:'#dab1b8',health:18,decay:15,duration:2,effect:'건강 +18 · 2일간 포만감 감소 15'},
@@ -37,6 +37,9 @@ export const LEVEL_XP=[0,180,520,1050,1900];
 export function keeperLevel(state){let level=1;for(let i=1;i<LEVEL_XP.length;i++)if(state.xp>=LEVEL_XP[i])level=i+1;return level;}
 export function itemLevel(id){return SHOP_AREAS.find(a=>a.id===PRODUCTS[id]?.area)?.level??99;}
 export function compatibleFood(item,species){return !!item?.food&&(!item.species||item.species.includes(species));}
+export function isAdultBedding(item){return item?.kind==='mat'&&item.adultBedding===true;}
+export function adultBeddingItems(state){return Object.entries(PRODUCTS).filter(([id,p])=>isAdultBedding(p)&&state.inventory[id]>0).sort(([,a],[,b])=>Number(!!a.food)-Number(!!b.food)||a.price/a.qty-b.price/b.qty);}
+export function adultBeddingCount(state){return adultBeddingItems(state).reduce((sum,[id])=>sum+state.inventory[id],0);}
 export function inventoryCount(state,kind){return Object.entries(state.inventory).reduce((sum,[id,n])=>sum+(PRODUCTS[id]?.kind===kind?n:0),0);}
 export function syncSupplies(state){state.jelly=inventoryCount(state,'jelly');state.substrate=inventoryCount(state,'mat');}
 export const GROWTH_DAYS=15;
