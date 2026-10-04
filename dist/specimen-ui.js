@@ -1,6 +1,7 @@
 import {SPECIES} from './world.js';
 import {PARTS,PIN_POINT,CASE_SLOTS} from './specimens.js';
 import {spriteURL,specimenBodyURL} from './art.js';
+import {activeAuctionFor} from './auctions.js';
 import {lineBadge} from './line-ui.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const PHASES={chamber:'연화상 준비',relaxing:'연화 대기',pinning:'주핀·높이 맞추기',posing:'다리·더듬이 정리',drying:'건조 대기',cleanup:'보조핀 제거',labeling:'라벨 부착',casing:'케이스에 넣기',done:'보관 완료'};
@@ -12,7 +13,7 @@ export function specimenImage(m){
 }
 const tool=(name,task,disabled=false,attrs='')=>`<button class="bench-tool" data-specimen-task="${task}" ${disabled?'disabled':''} ${attrs}>${name}</button>`;
 export function specimenCases(state,drop=false){
- return state.specimenCases.map(c=>`<section class="specimen-case"><div class="case-head"><h3>${esc(c.name)}</h3><small>방습 보관 · ${state.memorials.filter(m=>m.caseId===c.id).length}/${CASE_SLOTS}칸</small></div><div class="case-slots">${Array.from({length:CASE_SLOTS},(_,i)=>{const m=state.memorials.find(m=>m.caseId===c.id&&m.slot===i);return `<div class="case-slot ${m?'occupied':drop?'drop-ready':''}" data-case-id="${esc(c.id)}" data-case-slot="${i}" ${drop&&!m?'tabindex="0" role="button" aria-label="'+esc(c.name)+' '+(i+1)+'번 빈 칸에 표본 놓기"':''}>${m?`${specimenImage(m)}<div class="case-label"><strong>${esc(m.bug.name)}</strong><em>${SPECIES[m.bug.species].latin}</em>${lineBadge(state,m.bug)}<span>${m.bug.length.toFixed(1)} mm · ${m.bug.source?esc(m.bug.source):''}<br>${m.bug.born}일째 획득 · 사육자 ${esc(m.work.label.collector)}</span>${m.caption?`<p>${esc(m.caption)}</p>`:''}</div>`:`<span>${i+1}번 칸${drop?'<br>완성 표본을 이곳에 놓기':''}</span>`}</div>`;}).join('')}</div></section>`).join('');
+ return state.specimenCases.map(c=>`<section class="specimen-case"><div class="case-head"><h3>${esc(c.name)}</h3><small>방습 보관 · ${state.memorials.filter(m=>m.caseId===c.id).length}/${CASE_SLOTS}칸</small></div><div class="case-slots">${Array.from({length:CASE_SLOTS},(_,i)=>{const m=state.memorials.find(m=>m.caseId===c.id&&m.slot===i);return `<div class="case-slot ${m?'occupied':drop?'drop-ready':''}" data-case-id="${esc(c.id)}" data-case-slot="${i}" ${drop&&!m?'tabindex="0" role="button" aria-label="'+esc(c.name)+' '+(i+1)+'번 빈 칸에 표본 놓기"':''}>${m?`${specimenImage(m)}${activeAuctionFor(state,'specimen',m.id)?'<span class="specimen-auction-badge">경매 출품 중</span>':''}<div class="case-label"><strong>${esc(m.bug.name)}</strong><em>${SPECIES[m.bug.species].latin}</em>${lineBadge(state,m.bug)}<span>${m.bug.length.toFixed(1)} mm · ${m.bug.source?esc(m.bug.source):''}<br>${m.bug.born}일째 획득 · 사육자 ${esc(m.work.label.collector)}</span>${m.caption?`<p>${esc(m.caption)}</p>`:''}</div>`:`<span>${i+1}번 칸${drop?'<br>완성 표본을 이곳에 놓기':''}</span>`}</div>`;}).join('')}</div></section>`).join('');
 }
 export function specimenBench(m,draft={}){
  const w=m.work,phase=w.phase,posing=phase==='posing',cleanup=phase==='cleanup',allFixed=w.parts.every(p=>p.fixed),chamber=phase==='chamber'||phase==='relaxing';

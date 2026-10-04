@@ -38,6 +38,7 @@ export function loadWorld(storage,id,now=Date.now()){
   if(!state){state=newGame(now);state.settings.realTime=world.realTime;state.clock.calendar=true;}
   if(state.settings.realTime!==world.realTime)setTimeOptions(state,{realTime:world.realTime,realGrowth:world.realTime&&state.settings.realGrowth},now);
   const elapsed=syncRealTime(state,now);
+  if(elapsed.auctionEvents?.length)notice=elapsed.auctionEvents.at(-1);
   if(elapsed.days)notice=`지난 ${elapsed.days}일 반영${elapsed.events.length?' · 사육일지 확인 가능':''}`;
   let ui={};
   try{const saved=JSON.parse(storage.getItem(keys.ui));if(saved&&typeof saved==='object'&&!Array.isArray(saved))ui=saved;}catch{}
