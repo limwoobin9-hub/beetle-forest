@@ -1,6 +1,7 @@
-// Original pixel artwork. All coordinates are painted on a low-resolution
-// canvas, one integer pixel at a time; no downloaded or generated imagery.
+// Original pixel artwork drawn from specimen anatomy on an integer-pixel canvas.
+// Photo references are documented; no source photographs ship with the game.
 import {stepHabitat} from './habitat.js';
+import {drawDorsal,drawLateral,PIXEL_ANATOMY} from './beetle-pixels.js';
 const sprites = new Map();
 const urls = new Map();
 const backgrounds = new Map();
@@ -21,76 +22,9 @@ function poly(c,points,color){
 function line(c,points,color,width=1){const p=pen(c);for(let i=1;i<points.length;i++){let [x0,y0]=points[i-1].map(Math.round);const [x1,y1]=points[i].map(Math.round);let dx=Math.abs(x1-x0),sx=x0<x1?1:-1,dy=-Math.abs(y1-y0),sy=y0<y1?1:-1,err=dx+dy;while(true){p(x0,y0,width,width,color);if(x0===x1&&y0===y1)break;let e2=2*err;if(e2>=dy){err+=dy;x0+=sx;}if(e2<=dx){err+=dx;y0+=sy;}}}}
 function oval(c,x,y,w,h,color){const p=pen(c);for(let j=0;j<h;j++){const extent=Math.sqrt(Math.max(0,1-((j+.5-h/2)/(h/2))**2))*w/2;const left=Math.ceil(w/2-extent-.5),right=Math.floor(w/2+extent-.5);if(right>=left)p(x+left,y+j,right-left+1,1,color);}}
 export function bugSprite(species='king',sex='male',traits=[]){
-  const key=species+sex+'-'+[...traits].sort().join(',');if(sprites.has(key))return sprites.get(key);
-  if(['redleg','dauria','twospot'].includes(species)){const cvs=rareBugSprite(species,sex,traits);paintTraits(cvs,species,sex,traits);sprites.set(key,cvs);return cvs;}
-  const cvs=document.createElement('canvas');cvs.width=48;cvs.height=72;const c=cvs.getContext('2d'),p=pen(c);
-  const rhino=species==='rhino',flat=species==='flat';
-  const outline=rhino?'#251e23':'#172525',base=rhino?'#62433e':flat?'#354342':'#354548',light=rhino?'#a07456':flat?'#718076':'#758b83',shine=rhino?'#c19c6a':'#a8baa0';
-  // Six jointed legs and clubbed antennae.
-  const legColor=rhino?'#453333':'#2a3938';
-  const legs=[[[17,33],[10,30],[5,22],[3,21]],[[17,44],[9,42],[5,45],[2,42]],[[18,55],[10,58],[7,65],[3,66]]];
-  for(const l of legs){line(c,l,outline,2);line(c,l.map(([x,y])=>[47-x,y]),outline,2);line(c,l,legColor);line(c,l.map(([x,y])=>[47-x,y]),legColor);}
-  line(c,[[16,25],[11,22],[8,22],[7,19]],outline,2);line(c,[[31,25],[36,22],[39,22],[40,19]],outline,2);p(5,18,4,3,light);p(39,18,4,3,light);
-  if(rhino){
-    oval(c,13,38,23,28,outline);oval(c,15,39,19,24,base);oval(c,16,39,10,19,'#815744');oval(c,18,41,4,13,light);p(19,43,2,8,shine);p(24,39,2,25,outline);p(26,42,2,18,'#755346');
-    poly(c,[[12,30],[15,24],[32,24],[36,31],[34,41],[14,41]],outline);poly(c,[[15,30],[18,26],[30,26],[33,31],[31,39],[16,38]],base);p(17,28,4,8,light);p(21,28,7,2,'#8e6250');
-    oval(c,16,20,16,12,outline);oval(c,18,21,12,9,base);p(17,25,2,2,shine);p(29,25,2,2,shine);
-    if(sex==='male'){
-      poly(c,[[21,28],[20,20],[21,14],[20,10],[17,8],[15,5],[15,2],[19,5],[23,8],[25,7],[29,2],[32,1],[31,6],[28,10],[27,15],[27,21],[26,28]],outline);
-      poly(c,[[22,26],[22,17],[23,11],[21,8],[19,7],[18,5],[23,10],[26,9],[29,5],[28,9],[25,13],[25,25]],light);p(23,13,1,9,shine);
-      poly(c,[[18,33],[17,29],[19,24],[21,23],[21,32]],outline);p(19,27,1,4,light);
-    }else{p(19,22,9,2,light);p(21,20,5,1,shine);}
-  }else{
-    poly(c,[[15,39],[32,39],[36,45],[35,59],[31,65],[23,67],[16,64],[12,57],[12,45]],outline);
-    poly(c,[[16,40],[31,40],[33,45],[32,58],[29,62],[24,64],[24,40]],base);
-    poly(c,[[16,40],[23,40],[23,64],[18,61],[15,56],[15,45]],'#47595a');
-    p(17,43,3,12,light);p(18,44,1,8,shine);p(27,44,2,13,light);p(23,40,1,26,outline);p(16,58,2,3,'#60756a');p(29,58,1,2,'#63796f');
-    poly(c,[[12,30],[15,27],[32,27],[36,31],[34,40],[13,40]],outline);poly(c,[[15,31],[18,29],[30,29],[33,32],[31,38],[15,37]],base);p(17,30,10,2,light);p(15,32,3,4,light);p(17,31,3,1,shine);
-    const hx=flat?13:14,hw=flat?22:20;
-    poly(c,[[hx,22],[hx+3,18],[hx+hw-3,18],[hx+hw,22],[hx+hw-1,31],[hx+1,31]],outline);p(hx+3,21,hw-6,8,base);p(hx+4,20,hw-8,2,light);p(hx+3,23,3,4,light);p(hx+2,26,2,2,shine);p(hx+hw-4,26,2,2,shine);
-    if(sex==='male'){
-      const mandible=traits.includes('flat_short')?[[13,23],[11,19],[12,13],[15,9],[17,10],[15,14],[19,14],[19,17],[16,18],[18,21]]:traits.includes('flat_toothless')?[[13,23],[10,18],[9,9],[11,4],[15,1],[16,2],[14,7],[14,13],[16,18],[18,21]]:traits.includes('flat_long')?[[13,23],[9,18],[7,9],[9,3],[13,0],[15,0],[12,6],[12,12],[17,11],[18,13],[14,15],[17,21]]:traits.includes('king_curved')?[[16,22],[11,18],[9,11],[10,6],[13,2],[18,0],[19,2],[15,5],[13,9],[14,13],[18,12],[19,14],[16,16],[20,20]]:flat?[[13,23],[10,18],[9,9],[11,4],[15,1],[16,2],[14,7],[15,12],[19,11],[19,14],[16,16],[18,21]]:[[16,22],[11,17],[11,9],[13,3],[16,0],[18,0],[16,5],[15,10],[18,9],[19,11],[16,14],[20,19]];
-      poly(c,mandible,outline);poly(c,mandible.map(([x,y])=>[47-x,y]),outline);
-      const highlight=traits.includes('flat_short')?[[13,21],[13,16],[15,12],[14,17],[16,20]]:traits.includes('flat_long')?[[12,21],[10,17],[9,9],[11,5],[10,11],[12,17],[15,20]]:traits.includes('king_curved')?[[16,20],[12,17],[11,11],[12,7],[16,3],[13,9],[13,14],[18,19]]:flat?[[13,21],[12,17],[11,10],[12,6],[14,4],[13,10],[14,16],[16,20]]:[[16,20],[13,16],[13,9],[15,5],[14,12],[15,15],[18,19]];
-      poly(c,highlight,light);poly(c,highlight.map(([x,y])=>[47-x,y]),light);if(!traits.includes('flat_short')){p(13,11,1,3,shine);p(33,11,1,3,shine);}
-    }else{
-      poly(c,[[17,21],[17,15],[20,11],[21,12],[20,17],[22,20]],outline);poly(c,[[30,21],[30,15],[27,11],[26,12],[27,17],[25,20]],outline);p(18,16,1,4,light);p(29,16,1,4,light);
-    }
-  }
-  paintTraits(cvs,species,sex,traits);sprites.set(key,cvs);return cvs;
-}
-function rareBugSprite(species,sex,traits=[]){
- const cvs=document.createElement('canvas');cvs.width=48;cvs.height=72;const c=cvs.getContext('2d'),p=pen(c),spot=species==='twospot',dauria=species==='dauria';
- const dark='#2c2522',base=spot?'#bf8242':dauria?'#74543b':'#343733',light=spot?'#e8b564':dauria?'#ac8050':'#768174';
- const legs=[[[16,34],[9,31],[5,24]],[[15,44],[7,44],[3,48]],[[17,56],[10,60],[6,67]]];
- for(const l of legs){line(c,l,dark,2);line(c,l.map(([x,y])=>[47-x,y]),dark,2);if(species==='redleg'){line(c,l.slice(0,2),'#a34a2b',2);line(c,l.slice(0,2).map(([x,y])=>[47-x,y]),'#a34a2b',2);}}
- oval(c,12,37,24,30,dark);oval(c,14,38,20,27,base);p(17,42,3,15,light);p(18,43,1,8,'#ead8a1');p(27,42,2,15,light);p(23,38,2,27,dark);
- poly(c,[[13,30],[16,27],[31,27],[35,31],[33,39],[14,39]],dark);p(16,29,16,8,base);p(18,29,11,2,light);
- if(spot){p(16,33,4,4,dark);p(28,33,4,4,dark);p(23,28,2,11,dark);}
- poly(c,[[15,22],[18,19],[29,19],[33,22],[32,30],[16,30]],dark);p(18,21,11,7,base);p(19,21,9,2,light);
- line(c,[[17,25],[10,22],[7,17]],dark,1);line(c,[[30,25],[37,22],[40,17]],dark,1);p(5,16,3,2,light);p(39,16,3,2,light);
- if(sex==='male'){
-  const jaw=traits.includes('dauria_fork')?[[17,23],[12,19],[11,12],[13,7],[17,3],[19,4],[16,8],[20,7],[21,10],[16,13],[20,21]]:spot?[[16,23],[10,19],[8,11],[10,5],[14,1],[16,2],[13,7],[12,12],[16,11],[17,14],[13,17],[19,21]]:dauria?[[17,23],[12,19],[12,12],[15,7],[18,6],[17,10],[20,9],[20,12],[16,14],[20,21]]:[[17,23],[14,20],[14,14],[17,10],[19,11],[17,16],[20,19],[20,22]];
-  poly(c,jaw,dark);poly(c,jaw.map(([x,y])=>[47-x,y]),dark);line(c,spot?[[13,20],[10,12],[12,7]]:dauria?[[16,21],[14,15],[16,11]]:[[17,20],[16,16]],light,1);line(c,(spot?[[13,20],[10,12],[12,7]]:dauria?[[16,21],[14,15],[16,11]]:[[17,20],[16,16]]).map(([x,y])=>[47-x,y]),light,1);
- }else{poly(c,[[17,23],[18,15],[21,14],[20,19],[22,21]],dark);poly(c,[[30,23],[29,15],[26,14],[27,19],[25,21]],dark);}
- return cvs;
-}
-
-function paintTraits(cvs,species,sex,traits,side=false){
- if(!traits.length)return;
- const c=cvs.getContext('2d'),p=pen(c),colors={};
- const set=(pairs)=>Object.assign(colors,Object.fromEntries(pairs.map(([a,b])=>[a.slice(1),b])));
- if(traits.includes('rhino_red'))set([['#62433e','#96362e'],['#815744','#b94934'],['#a07456','#e07b50'],['#c19c6a','#f0b275'],['#755346','#a23d31'],['#8e6250','#bd5140'],['#5c342b','#943429'],['#956345','#cf6343'],['#b18757','#ef9c60'],['#775342','#a34b35']]);
- if(traits.includes('redleg_crimson'))set([['#a34a2b','#df4032'],['#a44e31','#df4032']]);
- if(traits.includes('dauria_amber'))set([['#74543b','#ab7139'],['#72523b','#ab7139'],['#ac8050','#e0b468'],['#ac8254','#e0b468'],['#8f6840','#ba874a']]);
- if(traits.includes('twospot_gold'))set([['#bf8242','#d6a841'],['#be8241','#d6a841'],['#e8b564','#f7db86'],['#e3b66b','#f7db86']]);
- const image=c.getImageData(0,0,cvs.width,cvs.height),d=image.data;
- for(let i=0;i<d.length;i+=4){if(!d[i+3])continue;const key=[d[i],d[i+1],d[i+2]].map(n=>n.toString(16).padStart(2,'0')).join('');const target=colors[key];if(target){d[i]=parseInt(target.slice(1,3),16);d[i+1]=parseInt(target.slice(3,5),16);d[i+2]=parseInt(target.slice(5,7),16);}}
- if(Object.keys(colors).length)c.putImageData(image,0,0);
- if(traits.includes('redleg_red_thorax')){if(side){p(42,24,9,5,'#954232');p(43,24,5,1,'#d18054');}else{p(16,30,16,7,'#954232');p(18,30,10,2,'#d18054');}}
- if(traits.includes('twospot_large_spots')){if(side)p(42,25,7,5,'#2c2522');else{p(15,32,6,6,'#2c2522');p(27,32,6,6,'#2c2522');}}
- const eye=traits.some(id=>id.endsWith('_white_eye'))?'#f8f5da':traits.some(id=>id.endsWith('_red_eye'))?'#f04e52':traits.includes('king_pink_eye')?'#ffa7cd':null;
- if(eye){if(side){p(63,25,2,2,'#201e22');p(64,25,1,1,eye);}else{const y=species==='rhino'?25:26;p(16,y,3,3,'#201e22');p(29,y,3,3,'#201e22');p(17,y,2,2,eye);p(29,y,2,2,eye);}}
+ const key=species+sex+'-'+[...traits].sort().join(',');if(sprites.has(key))return sprites.get(key);
+ const cvs=document.createElement('canvas');cvs.width=48;cvs.height=72;
+ drawDorsal(cvs.getContext('2d'),species,sex,traits,{pen,poly,line,oval});sprites.set(key,cvs);return cvs;
 }
 
 const ICONS={
@@ -115,9 +49,14 @@ const PAL={g:'#547a47',G:'#8eae63',b:'#3f513a',Y:'#e9c57d',w:'#fff9dd',r:'#99554
 export function icon(name){const rows=ICONS[name]||ICONS.bug,cvs=document.createElement('canvas');cvs.width=12;cvs.height=12;const c=cvs.getContext('2d');rows.forEach((row,y)=>[...row].forEach((v,x)=>{if(PAL[v]){c.fillStyle=PAL[v];c.fillRect(x,y,1,1);}}));return cvs.toDataURL();}
 export function spriteURL(species,sex,traits=[]){const key=species+sex+'-'+[...traits].sort().join(',');if(!urls.has(key))urls.set(key,bugSprite(species,sex,traits).toDataURL());return urls.get(key);}
 export function specimenBodyURL(species,sex,traits=[]){
- const key='specimen-body-'+species+sex;if(urls.has(key))return urls.get(key);
- const canvas=document.createElement('canvas');canvas.width=48;canvas.height=72;const c=canvas.getContext('2d');c.imageSmoothingEnabled=false;c.drawImage(bugSprite(species,sex),0,0);
- for(let y=0;y<72;y++){const [left,right]=y<18?[8,40]:y<60?[12,36]:y<68?[14,34]:[24,24];c.clearRect(0,y,left,1);c.clearRect(right,y,48-right,1);}
+ const key='specimen-body-'+species+sex+'-'+[...traits].sort().join(',');if(urls.has(key))return urls.get(key);
+ const canvas=document.createElement('canvas');canvas.width=48;canvas.height=72;const c=canvas.getContext('2d');c.imageSmoothingEnabled=false;c.drawImage(bugSprite(species,sex,traits),0,0);
+ const a=PIXEL_ANATOMY[species],hy=sex==='male'?(species==='rhino'?22:['little','redleg','dauria'].includes(species)?20:18):17;
+ for(let y=0;y<72;y++){
+  const width=y<hy+10?(sex==='male'?Math.max(a.head,species==='stag'?32:0):a.femaleHead):y<hy+20?a.thorax:sex==='female'&&species==='saw'?26:a.body;
+  const left=y<hy?5:Math.floor(24-width/2),right=y<hy?43:Math.ceil(24+width/2);
+  c.clearRect(0,y,left,1);c.clearRect(right,y,48-right,1);if(y>=69)c.clearRect(0,y,48,1);
+ }
  const url=canvas.toDataURL();urls.set(key,url);return url;
 }
 function cloud(c,x,y,color){const p=pen(c);p(x,y+4,40,5,color);p(x+6,y,21,9,color);p(x+26,y+2,9,7,color);}
@@ -184,8 +123,8 @@ function roomBackground(c,environment={period:'day',weather:null}){
   }
 }
 function forestBackground(c,location='oak'){
-  c.imageSmoothingEnabled=false;const deep=['deep','valley','island'].includes(location),grove=location==='grove',p=pen(c);forestBackdrop(c,480,276,deep,grove);
-  if(location==='mountain'){poly(c,[[0,145],[65,46],[132,127],[227,39],[320,125],[404,63],[480,145]],'#698f8a');p(0,145,480,27,'#799765');}
+  c.imageSmoothingEnabled=false;const deep=['deep','valley','island','saplane','hollow'].includes(location),grove=['grove','orchard'].includes(location),p=pen(c);forestBackdrop(c,480,276,deep,grove);
+  if(['mountain','ridge'].includes(location)){poly(c,[[0,145],[65,46],[132,127],[227,39],[320,125],[404,63],[480,145]],'#698f8a');p(0,145,480,27,'#799765');if(location==='ridge'){cloud(c,120,68,'#d1ded1');cloud(c,332,83,'#c2d4ca');}}
   const colors=deep?['#3f6857','#2d5148']:grove?['#8b994b','#677d3f']:['#658e4a','#3e6f3c'];
   [[66,45,45,153],[237,18,47,150],[386,46,42,151]].forEach(([x,y,w,h],i)=>{
     trunk(c,x,y,w,h,deep);line(c,[[x+13,y+36],[x-10,y+16],[x-33,y+17]],deep?'#485045':'#795f40',8);line(c,[[x+w-12,y+31],[x+w+15,y+7],[x+w+40,y+11]],deep?'#485045':'#795f40',7);
@@ -197,6 +136,14 @@ function forestBackground(c,location='oak'){
   log(c,328,227,56,22);p(324,222,12,8,'#c77947');p(327,230,5,7,'#e6d7a5');p(438,216,9,8,'#b88454');p(441,224,3,8,'#e6d7a5');
   if(location==='valley'){poly(c,[[40,214],[76,206],[146,219],[186,276],[81,276]],'#779ca0');for(let i=0;i<8;i++)p(55+i*11,230+i*5,18,2,'#b0c8bd');log(c,162,199,74,25);}
   if(location==='island'){leafCluster(c,2,7,115,95,'#497950','#315b49');leafCluster(c,356,3,127,100,'#497950','#315b49');p(0,253,480,23,'#b6ac72');for(let i=0;i<12;i++)p(12+i*41,260+i%4*3,8,1,'#d1c68a');}
+  if(location==='riverside'){
+   poly(c,[[0,179],[95,183],[128,210],[111,276],[0,276]],'#668e9a');for(let i=0;i<15;i++)p(5+(i*17)%80,191+(i*11)%80,21,2,'#bdd7ce');
+   for(let i=0;i<10;i++)line(c,[[43+i*9,51],[39+i*9,98],[31+i*9,124]],i%2?'#7e9e57':'#547e47',2);p(111,229,24,5,'#a9a078');
+  }
+  if(location==='coppice'){for(const x of [30,160,320,448]){trunk(c,x,99,14,110);leafCluster(c,x-20,75,56,47,'#7f9b54','#526f42');}log(c,164,211,57,17);log(c,248,225,41,15);}
+  if(location==='hollow'){trunk(c,214,38,70,169,true);oval(c,231,113,35,50,'#1c322a');oval(c,238,117,21,43,'#122820');line(c,[[232,117],[228,132],[230,155]],'#a28658',2);log(c,153,216,84,22);}
+  if(location==='saplane'){for(const [x,y] of [[91,145],[259,126],[402,147]]){oval(c,x,y,10,20,'#b38645');p(x+3,y+3,3,12,'#e3bd6e');p(x+4,y+20,2,8,'#bb8846');}for(let i=0;i<8;i++)p(193+i*14,242+i%3*5,5,2,'#b2bf6b');}
+  if(location==='orchard'){for(const [x,y] of [[48,84],[100,74],[248,53],[281,67],[394,91],[427,78]]){oval(c,x,y,7,7,'#c47a4c');p(x+2,y,2,2,'#f2b369');}p(127,221,26,17,'#9c7746');p(129,225,22,2,'#d1a361');p(136,217,8,6,'#b9a04b');log(c,288,217,53,16);}
 }
 export function drawBrood(c,stage,species='king'){
   c.imageSmoothingEnabled=false;const p=pen(c);p(0,0,90,90,'#dce6bd');p(15,15,59,8,'#63815c');p(19,12,51,4,'#91a77b');p(18,23,53,52,'#bfd0a4');p(18,61,53,14,'#8c6d47');for(let i=0;i<20;i++)p(20+(i*13)%49,62+(i*7)%12,2,1,'#c2a06a');p(15,75,59,4,'#65835b');p(18,23,2,51,'#eef1d1');p(69,23,2,51,'#9cb78d');
@@ -222,50 +169,8 @@ function battleBackground(c){
 // three near and three far jointed legs. These are not rotated dorsal sprites.
 export function sideSprite(species='king',sex='male',frame=0,traits=[]){
  const key=`side-${species}-${sex}-${frame%2}-${[...traits].sort().join(',')}`;if(sprites.has(key))return sprites.get(key);
- const cvs=document.createElement('canvas');cvs.width=88;cvs.height=48;const c=cvs.getContext('2d'),p=pen(c);
- const rhino=species==='rhino',flat=species==='flat',rare=['redleg','dauria','twospot'].includes(species),dark=rhino?'#271b1c':'#172021',base=rhino?'#5c342b':species==='twospot'?'#be8241':species==='dauria'?'#72523b':'#303d3c',lit=rhino?'#956345':species==='twospot'?'#e3b66b':species==='dauria'?'#ac8254':'#64766e';
- const step=frame%2?2:-2;
- // Far legs, visible beneath the body.
- for(const path of [[[18,31],[14,36],[9-step,42]],[[32,31],[30,38],[35+step,43]],[[47,29],[52,35],[57-step,42]]])line(c,path,'#58604d',1);
- if(rhino){
-  poly(c,[[9,29],[11,21],[17,17],[30,16],[39,19],[44,25],[42,32],[33,36],[18,35]],dark);
-  poly(c,[[11,27],[14,21],[22,18],[31,19],[39,23],[40,30],[31,33],[17,32]],base);
-  poly(c,[[15,22],[22,19],[31,20],[37,23],[30,23],[21,22],[15,25]],lit);p(20,20,8,1,'#b18757');
-  poly(c,[[39,22],[44,17],[52,18],[59,24],[56,32],[42,32]],dark);poly(c,[[43,22],[46,19],[51,20],[56,25],[53,29],[43,29]],base);p(46,20,6,2,lit);
-  poly(c,[[55,24],[60,22],[67,24],[69,28],[65,32],[56,31]],dark);p(58,24,6,4,base);p(63,26,2,1,'#b29468');
-  if(sex==='male'){
-   poly(c,[[62,27],[64,22],[67,17],[71,11],[72,6],[70,3],[71,1],[75,5],[77,4],[79,1],[81,1],[80,6],[77,10],[75,17],[71,22],[69,28]],dark);
-   line(c,[[66,25],[69,18],[73,12],[75,8],[74,4]],lit,2);line(c,[[75,8],[79,4]],lit,1);
-   poly(c,[[48,21],[48,17],[51,12],[54,11],[54,14],[52,19],[52,23]],dark);p(51,15,1,5,lit);
-  }
-  line(c,[[67,29],[71,30],[72,32]],dark,1);
- }else if(rare){
-  poly(c,[[9,29],[13,23],[23,21],[35,23],[41,27],[39,33],[18,35],[11,32]],dark);poly(c,[[12,28],[16,24],[25,23],[34,25],[37,28],[34,31],[18,32]],base);line(c,[[16,25],[24,24],[33,26]],lit,2);
-  poly(c,[[37,25],[41,22],[51,22],[55,26],[52,31],[39,32]],dark);p(41,24,10,5,base);p(43,23,6,1,lit);if(species==='twospot')p(43,26,4,3,dark);
-  poly(c,[[52,25],[57,22],[64,24],[66,28],[62,31],[53,29]],dark);p(55,25,7,3,base);p(57,24,4,1,lit);
-  line(c,[[60,24],[62,19],[67,18]],dark);p(66,17,2,2,lit);
-  if(sex==='male'){
-   const jaw=traits.includes('dauria_fork')?[[63,25],[67,21],[72,13],[76,10],[78,12],[75,16],[80,14],[80,17],[74,22],[68,27],[63,28]]:species==='twospot'?[[63,25],[69,23],[78,18],[83,13],[86,14],[84,19],[78,25],[70,29],[63,28]]:species==='dauria'?[[63,25],[67,21],[72,15],[76,13],[78,15],[74,18],[78,18],[77,21],[70,26],[63,28]]:[[63,25],[68,23],[73,20],[75,21],[72,25],[67,28],[63,28]];
-   poly(c,jaw,dark);line(c,[[65,25],[70,23],[species==='twospot'?81:73,species==='twospot'?17:20]],lit);
-  }else{poly(c,[[63,25],[69,24],[72,26],[67,29],[63,28]],dark);}
- }else{
-  // Elongated, relatively flat abdomen for Dorcus.
-  poly(c,[[8,29],[12,23],[20,21],[34,21],[40,24],[41,31],[36,34],[17,35],[10,32]],dark);
-  poly(c,[[11,28],[15,24],[24,23],[34,23],[38,25],[38,30],[32,32],[18,33]],base);
-  line(c,[[14,25],[24,23],[34,24]],lit,2);p(17,25,10,1,'#83988b');line(c,[[14,29],[34,29]],'#43534e');
-  poly(c,[[38,25],[41,21],[50,21],[55,24],[54,31],[40,32]],dark);poly(c,[[41,25],[44,23],[49,23],[52,25],[51,29],[41,29]],base);p(43,23,7,1,lit);
-  // Flat species head only slightly taller than its pronotum.
-  poly(c,[[52,24],[55,flat?20:22],[62,flat?20:22],[66,24],[65,30],[53,30]],dark);p(55,24,8,4,base);p(57,22,5,2,lit);p(63,25,1,1,'#abb7a0');
-  line(c,[[60,23],[62,18],[66,17],[68,18]],dark,1);p(67,17,2,2,lit);
-  if(sex==='male'){
-   const jaws=traits.includes('flat_short')?[[64,24],[69,22],[75,21],[77,23],[74,26],[68,28],[65,28]]:traits.includes('flat_long')?[[64,24],[69,21],[79,15],[85,13],[87,15],[85,20],[79,24],[71,28],[65,28]]:traits.includes('king_curved')?[[64,24],[69,20],[75,15],[80,13],[84,14],[85,17],[81,20],[77,20],[76,24],[71,27],[65,28]]:flat?[[64,24],[69,22],[76,18],[82,17],[85,19],[82,23],[77,25],[73,28],[65,28]]:[[64,24],[68,22],[75,20],[81,16],[84,16],[83,20],[78,25],[73,28],[65,28]];
-   poly(c,jaws,dark);line(c,traits.includes('flat_short')?[[66,24],[71,23],[75,23]]:traits.includes('flat_long')?[[66,24],[72,21],[80,16],[85,15]]:traits.includes('king_curved')?[[66,24],[70,20],[77,16],[81,16]]:[[67,24],[73,22],[79,20],[82,18]],lit,1);if(!traits.includes('flat_toothless')&&!traits.includes('flat_short'))p(76,24,2,2,dark);
-   line(c,traits.includes('flat_short')?[[64,28],[70,29],[76,26]]:[[64,28],[74,29],[80,26],[84,22]],'#263330',2);
-  }else{poly(c,[[64,26],[69,24],[73,25],[71,28],[66,30]],dark);p(67,26,3,1,lit);}
- }
- // Near legs remain on the substrate, with two alternating gait frames.
- for(const path of [[[18,31],[18+step,37],[11+step,43],[7+step,44]],[[35,31],[37-step,37],[31-step,43],[27-step,44]],[[51,29],[57+step,35],[61+step,43],[66+step,44]]]){line(c,path,dark,2);line(c,path,rhino?'#775342':species==='dauria'?'#8f6840':'#52615a',1);if(species==='redleg')line(c,path.slice(0,2),'#a44e31',2);}
- paintTraits(cvs,species,sex,traits,true);sprites.set(key,cvs);return cvs;
+ const cvs=document.createElement('canvas');cvs.width=88;cvs.height=48;
+ drawLateral(cvs.getContext('2d'),species,sex,frame,traits,{pen,poly,line,oval});sprites.set(key,cvs);return cvs;
 }
 export function larvaSprite(species='king',instar=3){
  const key=`larva-${species}-${instar}`;if(sprites.has(key))return sprites.get(key);

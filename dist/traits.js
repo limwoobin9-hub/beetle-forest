@@ -18,6 +18,12 @@ export const TRAITS=Object.freeze({
  dauria_fork:{species:'dauria',group:'jaw',name:'쌍첨턱',description:'두 갈래 턱 끝이 두드러지는 혈통',inspired:true,maleOnly:true,spawnRate:.003},
  twospot_large_spots:{species:'twospot',group:'pattern',name:'대점형',description:'앞가슴 양쪽의 검은 점이 큰 외형 변이',inspired:true,spawnRate:.009},
  twospot_gold:{species:'twospot',group:'body',name:'황금날개',description:'딱지날개의 황갈색이 밝은 외형 변이',inspired:true,spawnRate:.002},
+ saw_red:{species:'saw',group:'body',name:'적갈색형',description:'짙은 적갈색이 두드러지는 체색',spawnRate:.009},
+ saw_curved:{species:'saw',group:'jaw',name:'대곡치',description:'큰턱의 안쪽 휨이 두드러지는 혈통',inspired:true,maleOnly:true,spawnRate:.006},
+ little_white_eye:{species:'little',group:'eye',name:'화이트아이',description:'흰색 눈',spawnRate:.001},
+ little_slender:{species:'little',group:'jaw',name:'세장치',description:'가늘고 길게 뻗은 큰턱 혈통',inspired:true,maleOnly:true,spawnRate:.008},
+ stag_gold:{species:'stag',group:'body',name:'금모형',description:'몸의 짧은 털에 금빛이 두드러지는 외형 변이',inspired:true,spawnRate:.006},
+ stag_fork:{species:'stag',group:'jaw',name:'쌍첨치',description:'큰턱 끝의 두 갈래가 두드러지는 혈통',inspired:true,maleOnly:true,spawnRate:.0025},
 });
 export const speciesTraits=species=>Object.entries(TRAITS).filter(([,t])=>t.species===species).map(([id,t])=>({id,...t}));
 export const naturalTraitRate=species=>speciesTraits(species).reduce((sum,t)=>sum+t.spawnRate,0);

@@ -24,7 +24,7 @@ test('each natural trait has its own absolute probability, including the basic r
  assert.equal(traitRateText(naturalTraitRate('flat')),'2.8%');
  assert.deepEqual(rollTraits('unknown',values(0)),[]);
 });
-test('seeded populations match all sixteen per-trait rates without species leakage',()=>{
+test('seeded populations match each per-trait rate without species leakage',()=>{
  for(const sp of Object.keys(SPECIES)){
   const pool=speciesTraits(sp),counts=Object.fromEntries(pool.map(t=>[t.id,0])),random=stableTraitRandom(`rarity:${sp}`),n=250000;
   for(let i=0;i<n;i++){const traits=rollTraits(sp,random);assert.ok(traits.length<=1);if(traits.length){assert.ok(Object.hasOwn(counts,traits[0]));counts[traits[0]]++;}}

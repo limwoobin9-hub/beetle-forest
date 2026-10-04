@@ -104,7 +104,7 @@ export function inspectSpot(state,index,random=Math.random){
   const spot=e.spots[index];if(!spot||spot.searched)throw new Error('다른 흔적을 조사하세요.');
   spot.searched=true;e.noise=clamp(e.noise+7,0,100);
   if(!spot.rich&&random()<.72){if(e.spots.every(s=>s.searched)){state.expedition=null;note(state,'채집 종료 · 발견 없음');}return null;}
-  let roll=random(),species='flat';const entries=Object.entries(LOCATIONS[e.location].chances);
+  let roll=random();const entries=Object.entries(LOCATIONS[e.location].chances);let species=entries.at(-1)[0];
   const weights=entries.map(([sp,v])=>v*(SPECIES[sp].preferred.includes(spot.kind)?1.35:1)*(SPECIES[sp].rarity&&!spot.rich?.35:1));const total=weights.reduce((a,b)=>a+b,0);roll*=total;
   for(let i=0;i<entries.length;i++){roll-=weights[i];if(roll<=0){species=entries[i][0];break;}}
   const sex=random()<.52?'male':'female',genetic=clamp((random()+random()+random())/3+(random()<.006?.16:0),0,1);
@@ -263,7 +263,7 @@ export function makeOpponent(state,id,random=Math.random){
  const b=bugOf(state,id);if(b.sex!=='male')throw new Error('성충 수컷만 참가할 수 있습니다.');
  if(b.health<60||b.hunger<40)throw new Error('건강 60·포만감 40 이상이 필요합니다.');
  if(b.fightDay===state.day)throw new Error('오늘 이미 참가한 개체입니다.');
- const pool=['king','flat','rhino','king','flat','rhino','redleg','dauria','twospot'];
+ const pool=['king','flat','rhino','saw','little','stag','king','flat','rhino','saw','little','redleg','dauria','twospot'];
  const sp=pool[Math.floor(random()*pool.length)],trait=clamp(.22+(random()+random())*.34,0,1);
  const rival=createBug(sp,'male',trait,state.day,'투곤 상대',null,1,null,{random});
  state.fight={model:3,bugId:id,rival,elapsed:0,position:0,playerStamina:100+(b.trainingStamina||0)*1.5,opponentStamina:100,events:[],finished:false};

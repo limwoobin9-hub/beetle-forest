@@ -13,6 +13,9 @@ export const NATURAL_DURATIONS={
  redleg:[25,30,50,235,25],
  dauria:[25,30,50,235,25],
  twospot:[25,30,50,235,25],
+ saw:[25,25,40,210,25],
+ little:[25,25,40,185,25],
+ stag:[25,30,60,335,30],
 };
 export function growthDurations(species,mode='fast'){return mode==='natural'?NATURAL_DURATIONS[species]:FAST_DURATIONS;}
 export function growthDays(species,mode='fast'){return growthDurations(species,mode).reduce((a,b)=>a+b,0);}

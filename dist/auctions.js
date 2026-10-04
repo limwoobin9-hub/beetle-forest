@@ -15,7 +15,7 @@ export const auctionBug=a=>a.kind==='specimen'?a.asset.bug:a.kind==='adult'?a.as
 export const bidStep=price=>price<100?5:price<500?10:price<1500?25:50;
 export function sizeScore(b){const [lo,hi]=sizeRange(b.species,b.sex,true);return cap((b.length-lo)/(hi-lo));}
 export function marketValue(kind,asset){
- const b=kind==='specimen'?asset.bug:asset,sp=b.species,base={king:80,flat:65,rhino:50,redleg:100,dauria:150,twospot:190}[sp];
+ const b=kind==='specimen'?asset.bug:asset,sp=b.species,base={king:80,flat:65,rhino:50,redleg:100,dauria:150,twospot:190,saw:60,little:45,stag:95}[sp];
  const factors=[],rare=SPECIES[sp].rarity;let score,traitPower,value;
  if(kind==='larva'){
   score=asset.parents.reduce((n,p)=>n+sizeScore(p),0)/2;

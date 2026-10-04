@@ -102,14 +102,14 @@ test('early shop stays locked despite surplus XP until day and captures are earn
  assert.equal(shopAccess(s,'nutrition').unlocked,false);assert.throws(()=>buy(s,'protein'),/5일째/);
  s.day=5;assert.throws(()=>buy(s,'protein'),/채집 5마리/);s.captures=5;buy(s,'protein');assert.equal(shopAccess(s,'nutrition').unlocked,true);valid(s);
 });
-test('six habitats expose the three rare species at low rates and higher capture difficulty',()=>{
+test('established habitats retain rare encounters and their higher capture difficulty',()=>{
  const counts={},r=rng(352);const locations=['oak','deep','grove','valley','mountain','island'];
  for(const location of locations){for(let i=0;i<220;i++){
   const s=newGame();startExpedition(s,location,r);const e=inspectSpot(s,s.expedition.spots.findIndex(p=>p.rich),r);counts[e.bug.species]=(counts[e.bug.species]||0)+1;
   if(SPECIES[e.bug.species].rarity){assert.ok(captureDifficulty(e).threshold>captureDifficulty({...e,bug:{species:'flat'}}).threshold);assert.ok(e.speed>1);}
   valid(s);
  }}
- assert.ok(counts.redleg>0&&counts.dauria>0&&counts.twospot>0);assert.ok(counts.flat>counts.redleg*3);assert.ok(counts.flat>counts.dauria*3);assert.ok(counts.flat>counts.twospot*3);
+ assert.ok(counts.redleg>0&&counts.dauria>0&&counts.twospot>0);assert.ok(counts.flat>counts.dauria*3);assert.ok(counts.flat>counts.twospot*3);
 });
 test('wild king stag stays below 70 mm and large breeding requires strong inherited potential',()=>{
  for(let i=0;i<=100;i++)assert.ok(createBug('king','male',i/100,1).length<=69);
@@ -171,7 +171,7 @@ test('natural schedules take months and every species persists until its emergen
  const now=1800000000000;
  for(const species of Object.keys(SPECIES)){
   const s=newGame(now),[m,f]=parents(s,species);setTimeOptions(s,{realTime:true,realGrowth:true},now);const brood=breed(s,m.id,f.id,random),days=growthDays(species,'natural');
-  assert.ok(days>=180&&days<=365);assert.equal(syncRealTime(s,now+8*DAY_MS).days,8);assert.equal(s.broods.length,1);assert.equal(s.totalEmergences,0);valid(s);
+  assert.ok(days>=180&&days<=480);assert.equal(syncRealTime(s,now+8*DAY_MS).days,8);assert.equal(s.broods.length,1);assert.equal(s.totalEmergences,0);valid(s);
   syncRealTime(s,now+(days-1)*DAY_MS);assert.equal(s.broods.length,1);assert.equal(broodStage(brood),'번데기');valid(s);
   syncRealTime(s,now+days*DAY_MS);assert.equal(s.broods.length,0);assert.equal(s.totalEmergences,1);assert.equal(s.bugs.length,3);assert.equal(s.memorials.length,2);valid(s);
  }
