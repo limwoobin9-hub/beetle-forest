@@ -6,9 +6,9 @@ import {koreanClock,roomEnvironment,weatherKind,weatherURL,fetchWeather,parseWea
 const now=Date.parse('2026-10-04T11:29:23+09:00');
 const forecast={current:{time:'2026-10-04T11:15',temperature_2m:19.2,weather_code:61},daily:{sunrise:['2026-10-04T06:30'],sunset:['2026-10-04T18:15']}};
 function rng(seed){return ()=>{seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return (seed>>>0)/4294967296;};}
-function raised(seed,food='basic_mat',neglect=false){
- const random=rng(seed),s=newGame(now),m=createBug('king','male',.8,1),f=createBug('king','female',.4,1);m.length=64;f.length=34;s.bugs.push(m,f);s.inventory[food]=50;
- const b=breed(s,m.id,f.id,random,food);
+function raised(seed,food='basic_mat',neglect=false,species='flat'){
+ const random=rng(seed),s=newGame(now),m=createBug(species,'male',.8,1),f=createBug(species,'female',.4,1);m.length=64;f.length=34;s.bugs.push(m,f);s.inventory[food]=50;
+ const b=breed(s,m.id,f.id,random,'basic_mat');
  for(let i=0;i<15;i++){if(!neglect&&['1령','2령','3령'].includes(broodStage(b))&&b.food<100)careBrood(s,b.id,food);advanceDay(s);}
  assert.equal(validateSave(JSON.parse(JSON.stringify(s))),true);return s.bugs.filter(b=>b.source==='번식');
 }
@@ -42,17 +42,28 @@ test('new midnight clock grants one day at a month boundary and does not duplica
  const boundary=nextDayAt(s);assert.equal(syncRealTime(s,boundary-1).days,0);assert.equal(syncRealTime(s,boundary).days,1);
  assert.equal(syncRealTime(JSON.parse(JSON.stringify(s)),boundary).days,0);
 });
-test('well-maintained ordinary substrate produces 70mm-class king males from 60mm × 30mm parents',()=>{
+test('well-maintained substrate produces mostly 70mm-class flat males and rare 80mm males',()=>{
  const bugs=Array.from({length:120},(_,i)=>raised(i+17)).flat(),males=bugs.filter(b=>b.sex==='male'),females=bugs.filter(b=>b.sex==='female');
- assert.ok(males.length>100);assert.ok(males.every(b=>b.length>=70&&b.length<80));assert.ok(females.every(b=>b.length>=34));
+ assert.ok(males.length>100);assert.ok(males.every(b=>b.length>=70&&b.length<=82));assert.ok(males.some(b=>b.length>=80));assert.ok(males.filter(b=>b.length>=80).length/males.length<.15);assert.ok(females.every(b=>b.length>=34));
 });
 test('premium substrate occasionally produces 80mm males while food neglect reduces growth',()=>{
  const premium=Array.from({length:120},(_,i)=>raised(i+17,'stag_master')).flat().filter(b=>b.sex==='male');
- assert.ok(premium.some(b=>b.length>=80));assert.ok(premium.some(b=>b.length<80));assert.ok(premium.every(b=>b.length<=86));
+ assert.ok(premium.some(b=>b.length>=80));assert.ok(premium.some(b=>b.length<80));assert.ok(premium.every(b=>b.length<=82));
  const ordinary=raised(17),neglected=raised(17,'basic_mat',true);assert.ok(ordinary.every((b,i)=>b.length>neglected[i].length));
 });
 test('actual parental measurements affect offspring even for identical genetic values',()=>{
  const parents=(m,f)=>[{sex:'male',length:m,genetic:.6},{sex:'female',length:f,genetic:.6}];
  const rearing={care:1,nutrition:.72};
  assert.ok(createBug('king','male',.6,1,'번식',parents(65,35),.72,rearing).length>createBug('king','male',.6,1,'번식',parents(40,25),.72,rearing).length);
+});
+
+test('king males require actual fungal feeding for large growth, including when premium mat has equal nutrition',()=>{
+ const mat=Array.from({length:120},(_,i)=>raised(i+17,'stag_master',false,'king')).flat().filter(b=>b.sex==='male');
+ const fungus=Array.from({length:120},(_,i)=>raised(i+17,'oohira_1400',false,'king')).flat().filter(b=>b.sex==='male');
+ assert.ok(mat.every(b=>b.length<70));assert.ok(fungus.some(b=>b.length>=80));assert.ok(fungus.every(b=>b.length>=70&&b.length<=86));
+});
+test('a last-minute fungus switch cannot receive the full fungal growth bonus',()=>{
+ const parents=[{sex:'male',length:64,genetic:.8},{sex:'female',length:34,genetic:.4}];
+ const size=fungus=>createBug('king','male',.71,1,'번식',parents,1.12,{care:1,nutrition:1.12,fungus}).length;
+ assert.ok(size(.05)<size(1));assert.ok(size(0)<70);assert.ok(size(1)>=80);
 });

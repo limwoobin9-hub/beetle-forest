@@ -1,0 +1,3 @@
+[functions.beetle-auth]
+# Public login endpoint checks the API key, passwords and persistent rate limits.
+verify_jwt = false

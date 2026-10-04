@@ -13,16 +13,21 @@ export function rearedLength(species,sex,genetic,parents,quality,rearing=null){
  const inherited=(parentTrait(male)+parentTrait(female))/2;
  const variation=clamp(genetic-inherited,-.3,.3)*(range[1]-range[0])*.28;
  const span=range[1]-range[0];
- const benefit=span*(.23+Math.max(0,nutrition-.72)*(species==='king'?.04:.16))*care;
+ const fungus=clamp(rearing?.fungus??0,0,1);
+ const benefit=span*(species==='king'?.10+.23*fungus+Math.max(0,nutrition-.72)*.05:.23+Math.max(0,nutrition-.72)*.16)*care;
  const neglect=span*.65*(1-care);
  let length=baseline+benefit-neglect+variation;
- // A well-fed 60mm+ × 30mm+ king pair produces 70mm-class males.
- // 80mm-class offspring need premium food and a favourable inherited roll.
- if(species==='king'&&sex==='male'){
+ // The substrate rule belongs to D. titanus (flat), not D. hopei (king).
+ if(species==='flat'&&sex==='male'){
   if(male.length>=60&&female.length>=30&&care>=.9&&nutrition>=.7)length=Math.max(70,length);
-  if(nutrition>=1.06&&care>=.9&&genetic-inherited>.09)length+=6+clamp((genetic-inherited-.09)/.03,0,1)*2;
-  if(nutrition<1.02)length=Math.min(79.8,length);
+  if(male.length>=60&&female.length>=30&&nutrition>=.7&&care>=.9&&genetic-inherited>.105)length+=8;
  }
- if(care>=.9)length=Math.max(own.length,length);
+ if(species==='king'&&sex==='male'){
+  if(fungus>=.55&&care>=.9&&male.length>=60&&female.length>=30)length=Math.max(70,length);
+  if(fungus>=.75&&nutrition>=1.06&&care>=.9&&genetic-inherited>.09)length+=6;
+  // Track actual fungal feeding time; premium mat alone cannot earn this bonus.
+  length=Math.min(69.8+16.2*fungus,length);
+ }
+ if(care>=.9&&!(species==='king'&&sex==='male'))length=Math.max(own.length,length);
  return clamp(length,range[0],range[1]);
 }
