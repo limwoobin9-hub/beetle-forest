@@ -120,7 +120,7 @@ test('wild king stag stays below 70 mm and large breeding requires strong inheri
 test('body size dominates random contact outcomes even against maximum training',()=>{
  let wins=0;
  for(let i=1;i<=80;i++){
-  const s=newGame(),[m]=parents(s,'flat',.8);m.length=65;const f=makeOpponent(s,m.id,rng(i));f.rival.species='flat';f.rival.length=35;f.rival.trainingGrip=12;f.rival.trainingStamina=12;f.opponentStamina=118;
+  const s=newGame(),[m]=parents(s,'flat',.8);m.length=65;const f=makeOpponent(s,m.id,rng(i));f.rival.species='flat';f.rival.traits=[];f.rival.length=35;f.rival.trainingGrip=12;f.rival.trainingStamina=12;f.opponentStamina=118;
   while(!f.finished)advanceFight(s,rng(i+100+f.elapsed));if(f.won)wins++;valid(s);
  }
  assert.ok(wins>=78);

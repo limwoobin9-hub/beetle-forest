@@ -47,3 +47,5 @@ Supabase 설정과 인증 검증: [계정 구현](docs/accounts-ko.md).
 참고: [시리즈 분석](docs/reference-series-ko.md), [성장 기간 기준](docs/growth-timing-ko.md).
 
 성장 크기의 자료와 게임 조정 기준: [번식 크기·현실 환경](docs/environment-growth-ko.md).
+
+희귀 특성의 종별 목록·출현·유전·자료 기준: [특성과 유전](docs/traits-ko.md).

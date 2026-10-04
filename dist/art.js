@@ -20,9 +20,9 @@ function poly(c,points,color){
 }
 function line(c,points,color,width=1){const p=pen(c);for(let i=1;i<points.length;i++){let [x0,y0]=points[i-1].map(Math.round);const [x1,y1]=points[i].map(Math.round);let dx=Math.abs(x1-x0),sx=x0<x1?1:-1,dy=-Math.abs(y1-y0),sy=y0<y1?1:-1,err=dx+dy;while(true){p(x0,y0,width,width,color);if(x0===x1&&y0===y1)break;let e2=2*err;if(e2>=dy){err+=dy;x0+=sx;}if(e2<=dx){err+=dx;y0+=sy;}}}}
 function oval(c,x,y,w,h,color){const p=pen(c);for(let j=0;j<h;j++){const extent=Math.sqrt(Math.max(0,1-((j+.5-h/2)/(h/2))**2))*w/2;const left=Math.ceil(w/2-extent-.5),right=Math.floor(w/2+extent-.5);if(right>=left)p(x+left,y+j,right-left+1,1,color);}}
-export function bugSprite(species='king',sex='male'){
-  const key=species+sex;if(sprites.has(key))return sprites.get(key);
-  if(['redleg','dauria','twospot'].includes(species)){const cvs=rareBugSprite(species,sex);sprites.set(key,cvs);return cvs;}
+export function bugSprite(species='king',sex='male',traits=[]){
+  const key=species+sex+'-'+[...traits].sort().join(',');if(sprites.has(key))return sprites.get(key);
+  if(['redleg','dauria','twospot'].includes(species)){const cvs=rareBugSprite(species,sex,traits);paintTraits(cvs,species,sex,traits);sprites.set(key,cvs);return cvs;}
   const cvs=document.createElement('canvas');cvs.width=48;cvs.height=72;const c=cvs.getContext('2d'),p=pen(c);
   const rhino=species==='rhino',flat=species==='flat';
   const outline=rhino?'#251e23':'#172525',base=rhino?'#62433e':flat?'#354342':'#354548',light=rhino?'#a07456':flat?'#718076':'#758b83',shine=rhino?'#c19c6a':'#a8baa0';
@@ -49,17 +49,17 @@ export function bugSprite(species='king',sex='male'){
     const hx=flat?13:14,hw=flat?22:20;
     poly(c,[[hx,22],[hx+3,18],[hx+hw-3,18],[hx+hw,22],[hx+hw-1,31],[hx+1,31]],outline);p(hx+3,21,hw-6,8,base);p(hx+4,20,hw-8,2,light);p(hx+3,23,3,4,light);p(hx+2,26,2,2,shine);p(hx+hw-4,26,2,2,shine);
     if(sex==='male'){
-      const mandible=flat?[[13,23],[10,18],[9,9],[11,4],[15,1],[16,2],[14,7],[15,12],[19,11],[19,14],[16,16],[18,21]]:[[16,22],[11,17],[11,9],[13,3],[16,0],[18,0],[16,5],[15,10],[18,9],[19,11],[16,14],[20,19]];
+      const mandible=traits.includes('flat_short')?[[13,23],[11,19],[12,13],[15,9],[17,10],[15,14],[19,14],[19,17],[16,18],[18,21]]:traits.includes('flat_toothless')?[[13,23],[10,18],[9,9],[11,4],[15,1],[16,2],[14,7],[14,13],[16,18],[18,21]]:traits.includes('flat_long')?[[13,23],[9,18],[7,9],[9,3],[13,0],[15,0],[12,6],[12,12],[17,11],[18,13],[14,15],[17,21]]:traits.includes('king_curved')?[[16,22],[11,18],[9,11],[10,6],[13,2],[18,0],[19,2],[15,5],[13,9],[14,13],[18,12],[19,14],[16,16],[20,20]]:flat?[[13,23],[10,18],[9,9],[11,4],[15,1],[16,2],[14,7],[15,12],[19,11],[19,14],[16,16],[18,21]]:[[16,22],[11,17],[11,9],[13,3],[16,0],[18,0],[16,5],[15,10],[18,9],[19,11],[16,14],[20,19]];
       poly(c,mandible,outline);poly(c,mandible.map(([x,y])=>[47-x,y]),outline);
-      const highlight=flat?[[13,21],[12,17],[11,10],[12,6],[14,4],[13,10],[14,16],[16,20]]:[[16,20],[13,16],[13,9],[15,5],[14,12],[15,15],[18,19]];
-      poly(c,highlight,light);poly(c,highlight.map(([x,y])=>[47-x,y]),light);p(13,11,1,3,shine);p(33,11,1,3,shine);
+      const highlight=traits.includes('flat_short')?[[13,21],[13,16],[15,12],[14,17],[16,20]]:traits.includes('flat_long')?[[12,21],[10,17],[9,9],[11,5],[10,11],[12,17],[15,20]]:traits.includes('king_curved')?[[16,20],[12,17],[11,11],[12,7],[16,3],[13,9],[13,14],[18,19]]:flat?[[13,21],[12,17],[11,10],[12,6],[14,4],[13,10],[14,16],[16,20]]:[[16,20],[13,16],[13,9],[15,5],[14,12],[15,15],[18,19]];
+      poly(c,highlight,light);poly(c,highlight.map(([x,y])=>[47-x,y]),light);if(!traits.includes('flat_short')){p(13,11,1,3,shine);p(33,11,1,3,shine);}
     }else{
       poly(c,[[17,21],[17,15],[20,11],[21,12],[20,17],[22,20]],outline);poly(c,[[30,21],[30,15],[27,11],[26,12],[27,17],[25,20]],outline);p(18,16,1,4,light);p(29,16,1,4,light);
     }
   }
-  sprites.set(key,cvs);return cvs;
+  paintTraits(cvs,species,sex,traits);sprites.set(key,cvs);return cvs;
 }
-function rareBugSprite(species,sex){
+function rareBugSprite(species,sex,traits=[]){
  const cvs=document.createElement('canvas');cvs.width=48;cvs.height=72;const c=cvs.getContext('2d'),p=pen(c),spot=species==='twospot',dauria=species==='dauria';
  const dark='#2c2522',base=spot?'#bf8242':dauria?'#74543b':'#343733',light=spot?'#e8b564':dauria?'#ac8050':'#768174';
  const legs=[[[16,34],[9,31],[5,24]],[[15,44],[7,44],[3,48]],[[17,56],[10,60],[6,67]]];
@@ -70,11 +70,29 @@ function rareBugSprite(species,sex){
  poly(c,[[15,22],[18,19],[29,19],[33,22],[32,30],[16,30]],dark);p(18,21,11,7,base);p(19,21,9,2,light);
  line(c,[[17,25],[10,22],[7,17]],dark,1);line(c,[[30,25],[37,22],[40,17]],dark,1);p(5,16,3,2,light);p(39,16,3,2,light);
  if(sex==='male'){
-  const jaw=spot?[[16,23],[10,19],[8,11],[10,5],[14,1],[16,2],[13,7],[12,12],[16,11],[17,14],[13,17],[19,21]]:dauria?[[17,23],[12,19],[12,12],[15,7],[18,6],[17,10],[20,9],[20,12],[16,14],[20,21]]:[[17,23],[14,20],[14,14],[17,10],[19,11],[17,16],[20,19],[20,22]];
+  const jaw=traits.includes('dauria_fork')?[[17,23],[12,19],[11,12],[13,7],[17,3],[19,4],[16,8],[20,7],[21,10],[16,13],[20,21]]:spot?[[16,23],[10,19],[8,11],[10,5],[14,1],[16,2],[13,7],[12,12],[16,11],[17,14],[13,17],[19,21]]:dauria?[[17,23],[12,19],[12,12],[15,7],[18,6],[17,10],[20,9],[20,12],[16,14],[20,21]]:[[17,23],[14,20],[14,14],[17,10],[19,11],[17,16],[20,19],[20,22]];
   poly(c,jaw,dark);poly(c,jaw.map(([x,y])=>[47-x,y]),dark);line(c,spot?[[13,20],[10,12],[12,7]]:dauria?[[16,21],[14,15],[16,11]]:[[17,20],[16,16]],light,1);line(c,(spot?[[13,20],[10,12],[12,7]]:dauria?[[16,21],[14,15],[16,11]]:[[17,20],[16,16]]).map(([x,y])=>[47-x,y]),light,1);
  }else{poly(c,[[17,23],[18,15],[21,14],[20,19],[22,21]],dark);poly(c,[[30,23],[29,15],[26,14],[27,19],[25,21]],dark);}
  return cvs;
 }
+
+function paintTraits(cvs,species,sex,traits,side=false){
+ if(!traits.length)return;
+ const c=cvs.getContext('2d'),p=pen(c),colors={};
+ const set=(pairs)=>Object.assign(colors,Object.fromEntries(pairs.map(([a,b])=>[a.slice(1),b])));
+ if(traits.includes('rhino_red'))set([['#62433e','#96362e'],['#815744','#b94934'],['#a07456','#e07b50'],['#c19c6a','#f0b275'],['#755346','#a23d31'],['#8e6250','#bd5140'],['#5c342b','#943429'],['#956345','#cf6343'],['#b18757','#ef9c60'],['#775342','#a34b35']]);
+ if(traits.includes('redleg_crimson'))set([['#a34a2b','#df4032'],['#a44e31','#df4032']]);
+ if(traits.includes('dauria_amber'))set([['#74543b','#ab7139'],['#72523b','#ab7139'],['#ac8050','#e0b468'],['#ac8254','#e0b468'],['#8f6840','#ba874a']]);
+ if(traits.includes('twospot_gold'))set([['#bf8242','#d6a841'],['#be8241','#d6a841'],['#e8b564','#f7db86'],['#e3b66b','#f7db86']]);
+ const image=c.getImageData(0,0,cvs.width,cvs.height),d=image.data;
+ for(let i=0;i<d.length;i+=4){if(!d[i+3])continue;const key=[d[i],d[i+1],d[i+2]].map(n=>n.toString(16).padStart(2,'0')).join('');const target=colors[key];if(target){d[i]=parseInt(target.slice(1,3),16);d[i+1]=parseInt(target.slice(3,5),16);d[i+2]=parseInt(target.slice(5,7),16);}}
+ if(Object.keys(colors).length)c.putImageData(image,0,0);
+ if(traits.includes('redleg_red_thorax')){if(side){p(42,24,9,5,'#954232');p(43,24,5,1,'#d18054');}else{p(16,30,16,7,'#954232');p(18,30,10,2,'#d18054');}}
+ if(traits.includes('twospot_large_spots')){if(side)p(42,25,7,5,'#2c2522');else{p(15,32,6,6,'#2c2522');p(27,32,6,6,'#2c2522');}}
+ const eye=traits.some(id=>id.endsWith('_white_eye'))?'#f8f5da':traits.some(id=>id.endsWith('_red_eye'))?'#f04e52':traits.includes('king_pink_eye')?'#ffa7cd':null;
+ if(eye){if(side){p(63,25,2,2,'#201e22');p(64,25,1,1,eye);}else{const y=species==='rhino'?25:26;p(16,y,3,3,'#201e22');p(29,y,3,3,'#201e22');p(17,y,2,2,eye);p(29,y,2,2,eye);}}
+}
+
 const ICONS={
  leaf:['....gg.....','...ggGg....','..ggGgg....','.ggGGgg....','.ggGgg.....','..gg.......','...b.......','..b........'],
  home:['.....gg....','....gggg...','...ggGGgg..','..ggGGGGgg.','.gggggggggg','..bYYYYYb..','..bYYbbYb..','..bYYbbYb..','..bbbbbbb..'],
@@ -95,8 +113,8 @@ const ICONS={
 };
 const PAL={g:'#547a47',G:'#8eae63',b:'#3f513a',Y:'#e9c57d',w:'#fff9dd',r:'#99554a',R:'#ce8060',B:'#789bac'};
 export function icon(name){const rows=ICONS[name]||ICONS.bug,cvs=document.createElement('canvas');cvs.width=12;cvs.height=12;const c=cvs.getContext('2d');rows.forEach((row,y)=>[...row].forEach((v,x)=>{if(PAL[v]){c.fillStyle=PAL[v];c.fillRect(x,y,1,1);}}));return cvs.toDataURL();}
-export function spriteURL(species,sex){const key=species+sex;if(!urls.has(key))urls.set(key,bugSprite(species,sex).toDataURL());return urls.get(key);}
-export function specimenBodyURL(species,sex){
+export function spriteURL(species,sex,traits=[]){const key=species+sex+'-'+[...traits].sort().join(',');if(!urls.has(key))urls.set(key,bugSprite(species,sex,traits).toDataURL());return urls.get(key);}
+export function specimenBodyURL(species,sex,traits=[]){
  const key='specimen-body-'+species+sex;if(urls.has(key))return urls.get(key);
  const canvas=document.createElement('canvas');canvas.width=48;canvas.height=72;const c=canvas.getContext('2d');c.imageSmoothingEnabled=false;c.drawImage(bugSprite(species,sex),0,0);
  for(let y=0;y<72;y++){const [left,right]=y<18?[8,40]:y<60?[12,36]:y<68?[14,34]:[24,24];c.clearRect(0,y,left,1);c.clearRect(right,y,48-right,1);}
@@ -202,8 +220,8 @@ function battleBackground(c){
 
 // Separate lateral anatomy: low elytra, pronotum, head, mandibles/horn,
 // three near and three far jointed legs. These are not rotated dorsal sprites.
-export function sideSprite(species='king',sex='male',frame=0){
- const key=`side-${species}-${sex}-${frame%2}`;if(sprites.has(key))return sprites.get(key);
+export function sideSprite(species='king',sex='male',frame=0,traits=[]){
+ const key=`side-${species}-${sex}-${frame%2}-${[...traits].sort().join(',')}`;if(sprites.has(key))return sprites.get(key);
  const cvs=document.createElement('canvas');cvs.width=88;cvs.height=48;const c=cvs.getContext('2d'),p=pen(c);
  const rhino=species==='rhino',flat=species==='flat',rare=['redleg','dauria','twospot'].includes(species),dark=rhino?'#271b1c':'#172021',base=rhino?'#5c342b':species==='twospot'?'#be8241':species==='dauria'?'#72523b':'#303d3c',lit=rhino?'#956345':species==='twospot'?'#e3b66b':species==='dauria'?'#ac8254':'#64766e';
  const step=frame%2?2:-2;
@@ -227,7 +245,7 @@ export function sideSprite(species='king',sex='male',frame=0){
   poly(c,[[52,25],[57,22],[64,24],[66,28],[62,31],[53,29]],dark);p(55,25,7,3,base);p(57,24,4,1,lit);
   line(c,[[60,24],[62,19],[67,18]],dark);p(66,17,2,2,lit);
   if(sex==='male'){
-   const jaw=species==='twospot'?[[63,25],[69,23],[78,18],[83,13],[86,14],[84,19],[78,25],[70,29],[63,28]]:species==='dauria'?[[63,25],[67,21],[72,15],[76,13],[78,15],[74,18],[78,18],[77,21],[70,26],[63,28]]:[[63,25],[68,23],[73,20],[75,21],[72,25],[67,28],[63,28]];
+   const jaw=traits.includes('dauria_fork')?[[63,25],[67,21],[72,13],[76,10],[78,12],[75,16],[80,14],[80,17],[74,22],[68,27],[63,28]]:species==='twospot'?[[63,25],[69,23],[78,18],[83,13],[86,14],[84,19],[78,25],[70,29],[63,28]]:species==='dauria'?[[63,25],[67,21],[72,15],[76,13],[78,15],[74,18],[78,18],[77,21],[70,26],[63,28]]:[[63,25],[68,23],[73,20],[75,21],[72,25],[67,28],[63,28]];
    poly(c,jaw,dark);line(c,[[65,25],[70,23],[species==='twospot'?81:73,species==='twospot'?17:20]],lit);
   }else{poly(c,[[63,25],[69,24],[72,26],[67,29],[63,28]],dark);}
  }else{
@@ -240,14 +258,14 @@ export function sideSprite(species='king',sex='male',frame=0){
   poly(c,[[52,24],[55,flat?20:22],[62,flat?20:22],[66,24],[65,30],[53,30]],dark);p(55,24,8,4,base);p(57,22,5,2,lit);p(63,25,1,1,'#abb7a0');
   line(c,[[60,23],[62,18],[66,17],[68,18]],dark,1);p(67,17,2,2,lit);
   if(sex==='male'){
-   const jaws=flat?[[64,24],[69,22],[76,18],[82,17],[85,19],[82,23],[77,25],[73,28],[65,28]]:[[64,24],[68,22],[75,20],[81,16],[84,16],[83,20],[78,25],[73,28],[65,28]];
-   poly(c,jaws,dark);line(c,[[67,24],[73,22],[79,20],[82,18]],lit,1);p(76,24,2,2,dark);
-   line(c,[[64,28],[74,29],[80,26],[84,22]],'#263330',2);
+   const jaws=traits.includes('flat_short')?[[64,24],[69,22],[75,21],[77,23],[74,26],[68,28],[65,28]]:traits.includes('flat_long')?[[64,24],[69,21],[79,15],[85,13],[87,15],[85,20],[79,24],[71,28],[65,28]]:traits.includes('king_curved')?[[64,24],[69,20],[75,15],[80,13],[84,14],[85,17],[81,20],[77,20],[76,24],[71,27],[65,28]]:flat?[[64,24],[69,22],[76,18],[82,17],[85,19],[82,23],[77,25],[73,28],[65,28]]:[[64,24],[68,22],[75,20],[81,16],[84,16],[83,20],[78,25],[73,28],[65,28]];
+   poly(c,jaws,dark);line(c,traits.includes('flat_short')?[[66,24],[71,23],[75,23]]:traits.includes('flat_long')?[[66,24],[72,21],[80,16],[85,15]]:traits.includes('king_curved')?[[66,24],[70,20],[77,16],[81,16]]:[[67,24],[73,22],[79,20],[82,18]],lit,1);if(!traits.includes('flat_toothless')&&!traits.includes('flat_short'))p(76,24,2,2,dark);
+   line(c,traits.includes('flat_short')?[[64,28],[70,29],[76,26]]:[[64,28],[74,29],[80,26],[84,22]],'#263330',2);
   }else{poly(c,[[64,26],[69,24],[73,25],[71,28],[66,30]],dark);p(67,26,3,1,lit);}
  }
  // Near legs remain on the substrate, with two alternating gait frames.
  for(const path of [[[18,31],[18+step,37],[11+step,43],[7+step,44]],[[35,31],[37-step,37],[31-step,43],[27-step,44]],[[51,29],[57+step,35],[61+step,43],[66+step,44]]]){line(c,path,dark,2);line(c,path,rhino?'#775342':species==='dauria'?'#8f6840':'#52615a',1);if(species==='redleg')line(c,path.slice(0,2),'#a44e31',2);}
- sprites.set(key,cvs);return cvs;
+ paintTraits(cvs,species,sex,traits,true);sprites.set(key,cvs);return cvs;
 }
 export function larvaSprite(species='king',instar=3){
  const key=`larva-${species}-${instar}`;if(sprites.has(key))return sprites.get(key);
@@ -288,7 +306,7 @@ export function larvaSprite(species='king',instar=3){
 }
 function cachedBackground(key,draw){if(!backgrounds.has(key)){const cvs=document.createElement('canvas');cvs.width=480;cvs.height=276;draw(cvs.getContext('2d'));backgrounds.set(key,cvs);}return backgrounds.get(key);}
 function drawSide(c,b,x,ground,time,face=1,scale=null){
- if(!b)return;const sz=scale??(.3+b.length/90),frame=Math.floor(time/170)%2;const s=sideSprite(b.species,b.sex,frame);
+ if(!b)return;const sz=scale??(.3+b.length/90),frame=Math.floor(time/170)%2;const s=sideSprite(b.species,b.sex,frame,b.traits);
  c.save();c.translate(Math.round(x),Math.round(ground));c.scale(face*sz,sz);c.drawImage(s,-44,-44);c.restore();
 }
 export function drawRoom(c,b,time=0,environment={period:'day',weather:null}){
