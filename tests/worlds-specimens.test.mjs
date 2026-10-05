@@ -84,5 +84,5 @@ test('real-time offline catch-up advances preparation and death once without com
 });
 test('v4 upgrade resets new mortality counters without changing existing growth or time settings',()=>{
  const s=newGame(NOW);s.bugs.push(createBug('king','male',.5,1));s.bugs[0].health=1;setTimeOptions(s,{realTime:true,realGrowth:true},NOW);s.version=4;delete s.memorials;delete s.specimenCases;delete s.careAidDay;delete s.bugs[0].criticalDays;
- assert.equal(validateSave(s),true);migrateSave(s,NOW+DAY_MS);assert.equal(s.version,5);assert.equal(s.bugs[0].criticalDays,0);assert.equal(s.clock.anchorAt,NOW);assert.deepEqual(s.settings,{realTime:true,realGrowth:true});valid(s);
+ assert.equal(validateSave(s),true);migrateSave(s,NOW+DAY_MS);assert.equal(s.version,5);assert.equal(s.bugs[0].criticalDays,0);assert.equal(s.clock.anchorAt,NOW);assert.deepEqual(s.settings,{realTime:true,realGrowth:true,autoBuyCare:false});valid(s);
 });

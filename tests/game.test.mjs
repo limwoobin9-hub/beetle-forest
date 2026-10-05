@@ -201,7 +201,7 @@ test('a real day boundary preserves collection encounters and settles matches be
 });
 test('v3 saves retain insects, an active fight, traps and research while opting out of new time modes',()=>{
  const s=newGame(),[m]=parents(s);makeOpponent(s,m.id,random);buy(s,'sap_trap');placeTrap(s,'oak','sap_trap');s.researchClaimed=['common'];s.version=3;delete s.settings;delete s.clock;
- valid(s);migrateSave(s,1800000000000);assert.deepEqual(s.settings,{realTime:false,realGrowth:false});assert.equal(s.clock.anchorAt,1800000000000);assert.equal(s.traps.length,1);assert.ok(s.fight);assert.equal(s.researchClaimed.length,1);valid(s);
+ valid(s);migrateSave(s,1800000000000);assert.deepEqual(s.settings,{realTime:false,realGrowth:false,autoBuyCare:false});assert.equal(s.clock.anchorAt,1800000000000);assert.equal(s.traps.length,1);assert.ok(s.fight);assert.equal(s.researchClaimed.length,1);valid(s);
 });
 test('favorites survive saving and care acts on the intended card insect only',()=>{
  const s=newGame(),[m,f]=parents(s);m.hunger=10;f.hunger=10;m.hygiene=20;
