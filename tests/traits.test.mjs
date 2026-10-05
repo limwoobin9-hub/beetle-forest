@@ -17,11 +17,11 @@ test('every species has its own rare traits; king has curved jaws and no extreme
 test('each natural trait has its own absolute probability, including the basic remainder',()=>{
  for(const sp of Object.keys(SPECIES)){
   const pool=speciesTraits(sp);let lower=0;
-  for(const t of pool){assert.ok(t.spawnRate>0&&t.spawnRate<=.02);assert.deepEqual(rollTraits(sp,values(lower+t.spawnRate/2)),[t.id]);lower+=t.spawnRate;}
-  assert.ok(naturalTraitRate(sp)<.03);assert.deepEqual(rollTraits(sp,values(lower+1e-12)),[]);
+  for(const t of pool){assert.ok(t.spawnRate>0&&t.spawnRate<=.1);assert.ok(t.spawnRate>=t.rarityRate*5-1e-12);assert.deepEqual(rollTraits(sp,values(lower+t.spawnRate/2)),[t.id]);lower+=t.spawnRate;}
+  assert.ok(naturalTraitRate(sp)>=.06-1e-12&&naturalTraitRate(sp)<=.14+1e-12);assert.deepEqual(rollTraits(sp,values(lower+1e-12)),[]);
  }
- assert.equal(traitRateText(TRAITS.king_pink_eye.spawnRate),'0.02%');
- assert.equal(traitRateText(naturalTraitRate('flat')),'2.8%');
+ assert.equal(traitRateText(TRAITS.king_pink_eye.spawnRate),'0.102%');
+ assert.equal(traitRateText(naturalTraitRate('flat')),'14%');
  assert.deepEqual(rollTraits('unknown',values(0)),[]);
 });
 test('seeded populations match each per-trait rate without species leakage',()=>{
@@ -32,20 +32,21 @@ test('seeded populations match each per-trait rate without species leakage',()=>
  }
 });
 test('rarer traits carry stronger premiums and the same natural rates apply to males and females',()=>{
- const ordered=Object.keys(TRAITS).sort((a,b)=>TRAITS[b].spawnRate-TRAITS[a].spawnRate);
+ const ordered=Object.keys(TRAITS).sort((a,b)=>TRAITS[b].rarityRate-TRAITS[a].rarityRate);
  for(let i=1;i<ordered.length;i++)assert.ok(traitPremium(ordered[i])>=traitPremium(ordered[i-1]));
  assert.equal(traitRarity('flat_long').name,'희소');assert.equal(traitRarity('king_white_eye').name,'매우 희귀');assert.equal(traitRarity('king_pink_eye').name,'극희귀');
  for(const sp of Object.keys(SPECIES)){let offset=0;for(const t of speciesTraits(sp)){for(const sex of ['male','female'])assert.deepEqual(createBug(sp,sex,.7,1,'채집',null,1,null,{random:values(offset+t.spawnRate/2)}).traits,[t.id]);offset+=t.spawnRate;}}
 });
 test('new mutations use absolute trait rates without renormalizing the unoccupied groups',()=>{
  const parents=pair(['rhino_red'],[]);
- assert.deepEqual(inheritTraits('rhino',parents,values(.99,.0005)),['rhino_white_eye']);
- assert.deepEqual(inheritTraits('rhino',parents,values(.99,.00125)),['rhino_red_eye']);
- assert.deepEqual(inheritTraits('rhino',parents,values(.99,.0015+1e-12)),[]);
- assert.deepEqual(inheritTraits('rhino',parents,values(.1,.0005)),['rhino_red','rhino_white_eye']);
+ const whiteRate=TRAITS.rhino_white_eye.spawnRate,redRate=TRAITS.rhino_red_eye.spawnRate;
+ assert.deepEqual(inheritTraits('rhino',parents,values(.99,whiteRate/2)),['rhino_white_eye']);
+ assert.deepEqual(inheritTraits('rhino',parents,values(.99,whiteRate+redRate/2)),['rhino_red_eye']);
+ assert.deepEqual(inheritTraits('rhino',parents,values(.99,whiteRate+redRate+1e-12)),[]);
+ assert.deepEqual(inheritTraits('rhino',parents,values(.1,whiteRate/2)),['rhino_red','rhino_white_eye']);
  const random=stableTraitRandom('filtered-mutations'),n=250000;let white=0,red=0,body=0;
  for(let i=0;i<n;i++){const traits=inheritTraits('rhino',parents,random);white+=traits.includes('rhino_white_eye');red+=traits.includes('rhino_red_eye');body+=traits.includes('rhino_red');assert.ok(validTraits('rhino',traits));}
- assert.ok(Math.abs(white/n-.001)<.0004);assert.ok(Math.abs(red/n-.0005)<.0003);assert.ok(Math.abs(body/n-.30)<.01);
+ assert.ok(Math.abs(white/n-whiteRate)<5.5*Math.sqrt(whiteRate*(1-whiteRate)/n));assert.ok(Math.abs(red/n-redRate)<5.5*Math.sqrt(redRate*(1-redRate)/n));assert.ok(Math.abs(body/n-.30)<.01);
 });
 test('single-parent and matched-parent inheritance match the displayed exact odds',()=>{
  const single=pair(['flat_long'],[]),matched=pair(['flat_long'],['flat_long']);
@@ -109,4 +110,3 @@ test('traits remain on archived individuals after death',()=>{
  for(let i=0;i<CRITICAL_DAYS;i++)advanceDay(s);
  assert.deepEqual(s.memorials[0].bug.traits,['rhino_red']);assert.equal(validateSave(s),true);
 });
-

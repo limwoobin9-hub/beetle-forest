@@ -3,10 +3,11 @@ const foreignTraits=Object.fromEntries(Object.keys(FOREIGN_SPECIES).flatMap(sp=>
  [`${sp}_bronze`,{species:sp,group:'body',name:sp==='rainbow'?'블루 계열':'청동빛형',description:sp==='rainbow'?'푸른 금속광택이 두드러지는 게임 체색 변이':'밝은 청동빛이 두드러지는 게임 체색 변이',inspired:true,spawnRate:.006}],
  [`${sp}_white_eye`,{species:sp,group:'eye',name:'화이트아이',description:'흰색 눈의 게임 변이',inspired:true,spawnRate:.0007}],
 ]));
-// Rates are game settings informed by breeder records, not measured wild odds.
-// spawnRate is the absolute probability per individual of this species.
+// Appearance rates are game balance settings, not measured wild odds.
+// The original rarity reference still determines labels and market premiums.
 export const TRAIT_RATES=Object.freeze({single:.30,matched:.75});
-export const TRAITS=Object.freeze({
+export const TRAIT_APPEARANCE_BOOST=Object.freeze({multiplier:5,minimumSpeciesRate:.06});
+const BASE_TRAITS={
  king_curved:{species:'king',group:'jaw',name:'곡치',description:'두께 변화 없이 안쪽으로 휘어진 큰턱 혈통',maleOnly:true,spawnRate:.01},
  king_white_eye:{species:'king',group:'eye',name:'화이트아이',description:'흰색 눈',spawnRate:.001},
  king_red_eye:{species:'king',group:'eye',name:'레드아이',description:'붉은색 눈',spawnRate:.0006},
@@ -30,7 +31,12 @@ export const TRAITS=Object.freeze({
  stag_gold:{species:'stag',group:'body',name:'금모형',description:'몸의 짧은 털에 금빛이 두드러지는 외형 변이',inspired:true,spawnRate:.006},
  stag_fork:{species:'stag',group:'jaw',name:'쌍첨치',description:'큰턱 끝의 두 갈래가 두드러지는 혈통',inspired:true,maleOnly:true,spawnRate:.0025},
  ...foreignTraits,
-});
+};
+const baseSpeciesRates=Object.values(BASE_TRAITS).reduce((rates,t)=>{rates[t.species]=(rates[t.species]||0)+t.spawnRate;return rates;},{});
+export const TRAITS=Object.freeze(Object.fromEntries(Object.entries(BASE_TRAITS).map(([id,t])=>{
+ const boost=Math.max(TRAIT_APPEARANCE_BOOST.multiplier,TRAIT_APPEARANCE_BOOST.minimumSpeciesRate/baseSpeciesRates[t.species]);
+ return [id,Object.freeze({...t,rarityRate:t.spawnRate,spawnRate:t.spawnRate*boost})];
+})));
 const traitPools=new Map();
 for(const [id,t] of Object.entries(TRAITS)){if(!traitPools.has(t.species))traitPools.set(t.species,[]);traitPools.get(t.species).push(Object.freeze({id,...t}));}
 for(const [sp,pool] of traitPools)traitPools.set(sp,Object.freeze(pool));
@@ -38,11 +44,11 @@ export const speciesTraits=species=>traitPools.get(species)||[];
 export const naturalTraitRate=species=>speciesTraits(species).reduce((sum,t)=>sum+t.spawnRate,0);
 export const traitRateText=rate=>`${Number((rate*100).toFixed(3))}%`;
 export function traitRarity(id){
- const rate=TRAITS[id]?.spawnRate;
+ const rate=TRAITS[id]?.rarityRate;
  return !rate?{id:'normal',name:'기본형'}:rate<=.0005?{id:'exceptional',name:'극희귀'}:rate<=.001?{id:'very_rare',name:'매우 희귀'}:rate<=.005?{id:'rare',name:'희귀'}:{id:'uncommon',name:'희소'};
 }
 // Logarithmic premiums keep ultra-rare stock valuable without a 1/rate windfall.
-export const traitPremium=id=>TRAITS[id]?Math.round((1.5+.9*Math.log2(.02/TRAITS[id].spawnRate))*100)/100:1;
+export const traitPremium=id=>TRAITS[id]?Math.round((1.5+.9*Math.log2(.02/TRAITS[id].rarityRate))*100)/100:1;
 export const traitMarketBonus=traits=>[...new Set(traits||[])].reduce((sum,id)=>sum+traitPremium(id)-1,0);
 export function validTraits(species,traits){
  if(traits===undefined)return true; // Existing saves remain readable.
