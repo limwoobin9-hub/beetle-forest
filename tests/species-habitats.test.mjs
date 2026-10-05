@@ -9,7 +9,7 @@ import {listAuction,syncAuctions,marketValue,MINUTE} from '../dist/auctions.js';
 const NOW=1800000000000;
 const valid=s=>assert.equal(validateSave(JSON.parse(JSON.stringify(s))),true);
 test('all nine species are reachable, and collection and every trap respect the selected habitat',()=>{
- assert.equal(Object.keys(SPECIES).length,9);assert.equal(Object.keys(LOCATIONS).length,12);
+ assert.equal(Object.values(SPECIES).filter(sp=>!sp.foreign).length,9);assert.equal(Object.keys(LOCATIONS).length,12);
  const seen=new Set(),random=stableTraitRandom('habitat-restrictions');
  for(const [id,l] of Object.entries(LOCATIONS)){
   assert.ok(Math.abs(Object.values(l.chances).reduce((a,b)=>a+b,0)-1)<1e-10);
@@ -24,7 +24,7 @@ test('all nine species are reachable, and collection and every trap respect the 
    const s=newGame(NOW);s.inventory[item]=1;const trap=placeTrap(s,id,item);advanceDay(s);const e=checkTrap(s,trap.id,random);if(e)assert.ok(Object.hasOwn(l.chances,e.bug.species));valid(s);
   }
  }
- assert.deepEqual([...seen].sort(),Object.keys(SPECIES).sort());
+ assert.deepEqual([...seen].sort(),Object.keys(SPECIES).filter(sp=>!SPECIES[sp].foreign).sort());
  assert.deepEqual(speciesLocations('twospot').map(([id])=>id),['island']);
  assert.ok(speciesLocations('dauria').every(([,l])=>l.region==='highland'));
 });
@@ -61,3 +61,4 @@ test('new species use appropriate substrate and existing saves retain every owne
  const lot=listAuction(s,'adult',b.id,{startPrice:12,durationMinutes:60},NOW);startExpedition(s,'deep',()=>.6);const before=structuredClone(s);migrateSave(s,NOW);
  assert.deepEqual(s.auctions[0],before.auctions[0]);assert.deepEqual(s.expedition,before.expedition);assert.deepEqual(s.records,before.records);assert.equal(s.auctions[0].asset.id,b.id);valid(s);
 });
+

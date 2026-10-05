@@ -1,3 +1,8 @@
+import {FOREIGN_SPECIES} from './foreign-species.js';
+const foreignTraits=Object.fromEntries(Object.keys(FOREIGN_SPECIES).flatMap(sp=>[
+ [`${sp}_bronze`,{species:sp,group:'body',name:sp==='rainbow'?'블루 계열':'청동빛형',description:sp==='rainbow'?'푸른 금속광택이 두드러지는 게임 체색 변이':'밝은 청동빛이 두드러지는 게임 체색 변이',inspired:true,spawnRate:.006}],
+ [`${sp}_white_eye`,{species:sp,group:'eye',name:'화이트아이',description:'흰색 눈의 게임 변이',inspired:true,spawnRate:.0007}],
+]));
 // Rates are game settings informed by breeder records, not measured wild odds.
 // spawnRate is the absolute probability per individual of this species.
 export const TRAIT_RATES=Object.freeze({single:.30,matched:.75});
@@ -24,8 +29,12 @@ export const TRAITS=Object.freeze({
  little_slender:{species:'little',group:'jaw',name:'세장치',description:'가늘고 길게 뻗은 큰턱 혈통',inspired:true,maleOnly:true,spawnRate:.008},
  stag_gold:{species:'stag',group:'body',name:'금모형',description:'몸의 짧은 털에 금빛이 두드러지는 외형 변이',inspired:true,spawnRate:.006},
  stag_fork:{species:'stag',group:'jaw',name:'쌍첨치',description:'큰턱 끝의 두 갈래가 두드러지는 혈통',inspired:true,maleOnly:true,spawnRate:.0025},
+ ...foreignTraits,
 });
-export const speciesTraits=species=>Object.entries(TRAITS).filter(([,t])=>t.species===species).map(([id,t])=>({id,...t}));
+const traitPools=new Map();
+for(const [id,t] of Object.entries(TRAITS)){if(!traitPools.has(t.species))traitPools.set(t.species,[]);traitPools.get(t.species).push(Object.freeze({id,...t}));}
+for(const [sp,pool] of traitPools)traitPools.set(sp,Object.freeze(pool));
+export const speciesTraits=species=>traitPools.get(species)||[];
 export const naturalTraitRate=species=>speciesTraits(species).reduce((sum,t)=>sum+t.spawnRate,0);
 export const traitRateText=rate=>`${Number((rate*100).toFixed(3))}%`;
 export function traitRarity(id){
@@ -77,4 +86,3 @@ export function migrateTraits(state){
  state.bugs.forEach(assign);state.memorials?.forEach(m=>assign(m.bug));assign(state.expedition?.encounter?.bug);assign(state.fight?.rival);
  for(const brood of state.broods){brood.parents.forEach(assign);brood.children.forEach((child,i)=>{if(child.traits===undefined)child.traits=inheritTraits(brood.species,brood.parents,stableTraitRandom(`${brood.id}:${i}`));});}
 }
-

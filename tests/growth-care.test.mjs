@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {newGame,createBug,breed,broodStage,care,careBrood,advanceDay,syncRealTime,setTimeOptions,migrateSave,validateSave} from '../dist/engine.js';
 import {GROWTH_PROFILES,LEGACY_NATURAL_DURATIONS,rollGrowthPlan,validGrowthPlan,broodDurations,broodGrowthDays,stageIndex,DAY_MS,midnightAt} from '../dist/time.js';
 import {adultBeddingInterval,jellyInterval,larvalFoodInterval,needsCare,careRemainingDays} from '../dist/care-timing.js';
+import {SPECIES} from '../dist/world.js';
 import {PRODUCTS,compatibleFood} from '../dist/catalog.js';
 import {listAuction,cancelAuction} from '../dist/auctions.js';
 import {loadWorld,saveWorld,worldKeys} from '../dist/worlds.js';
@@ -12,7 +13,7 @@ const valid=s=>assert.equal(validateSave(JSON.parse(JSON.stringify(s))),true);
 function stock(species='king',realTime=false,realGrowth=realTime){
  const s=newGame(NOW),m=createBug(species,'male',.6,1),f=createBug(species,'female',.6,1);
  s.bugs.push(m,f);s.inventory.basic_mat=100;setTimeOptions(s,{realTime,realGrowth},NOW);
- const b=breed(s,m.id,f.id,()=>.25);return {s,m,f,b};
+ const medium=['tarandus','regius'].includes(species)?'kawara_spawn':'basic_mat';s.inventory[medium]=100;const b=breed(s,m.id,f.id,()=>.25,medium);return {s,m,f,b};
 }
 function progress(b){const durations=broodDurations(b),i=stageIndex(b.age,durations);return [i,(b.age-durations.slice(0,i).reduce((a,v)=>a+v,0))/durations[i]];}
 
@@ -68,7 +69,7 @@ test('corrupted randomized schedules are rejected without mutating valid or lega
 test('real rhino jelly reaches replacement in one day, while small and large stags take three and two',()=>{
  for(const species of Object.keys(GROWTH_PROFILES))for(const sex of ['male','female']){
   const s=newGame(NOW),b=createBug(species,sex,.6,1);s.bugs.push(b);setTimeOptions(s,{realTime:true,realGrowth:false},NOW);care(s,b.id,'jelly','banana');const period=jellyInterval(b);
-  assert.equal(period,species==='rhino'?1:b.length>=50?2:3);
+  assert.equal(period,(species==='rhino'||SPECIES[species].family==='rhino')?1:b.length>=50?2:3);
   for(let day=1;day<=period;day++){syncRealTime(s,NOW+day*DAY_MS);assert.equal(needsCare(b.hunger),day===period);assert.equal(careRemainingDays(b.hunger,period),period-day);}
   assert.ok(b.health>20);assert.equal(s.memorials.length,0);valid(s);
  }

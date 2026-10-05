@@ -1,4 +1,6 @@
 import {validateSave} from './engine.js';
+import {SPECIES} from './world.js';
+import {canImportLive} from './career.js';
 import {WORLDS,worldKeys,loadWorld,saveWorldsTogether} from './worlds.js';
 
 export const EXCHANGE_COOLDOWN=7*24*60*60*1000;
@@ -24,6 +26,8 @@ export function exchangeInsects(states,realId,virtualId,now=Date.now()){
  for(const w of WORLDS){
   if(!exchangeCandidates(states[w.id]).some(b=>b.id===ids[w.id]))throw new Error(`${w.name}에서 교환할 성충 한 마리를 골라 주세요. 투곤 중인 개체는 종료 후 교환할 수 있어요.`);
   const other=states[w.id==='real'?'virtual':'real'],id=ids[w.id];
+  const outgoing=states[w.id].bugs.find(b=>b.id===id);
+  if(SPECIES[outgoing.species].foreign&&!canImportLive(other))throw new Error('해외종을 받는 숲에서 해외 생체 취급 자격을 먼저 취득하세요.');
   if(other.bugs.some(b=>b.id===id)||(other.memorials||[]).some(m=>m.id===id)||(other.auctions||[]).some(a=>a.status==='active'&&a.asset?.id===id))throw new Error('두 숲에 같은 개체 기록이 있어 교환할 수 없어요.');
  }
  const next=structuredClone(states),original={real:states.real.bugs.find(b=>b.id===realId),virtual:states.virtual.bugs.find(b=>b.id===virtualId)};

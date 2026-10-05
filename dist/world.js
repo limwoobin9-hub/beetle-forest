@@ -1,3 +1,4 @@
+import {FOREIGN_SPECIES} from './foreign-species.js';
 // Size bounds and encounter rates below are game settings, not record claims.
 export const SPECIES={
  king:{name:'왕사슴벌레',latin:'Dorcus hopei binodulosus',color:'#b3bfaa',male:[25,69],female:[25,44],bredMale:[25,86],bredFemale:[25,49],power:1.06,grip:1.08,rarity:0,preferred:['bark'],note:'검은 몸과 큰턱 안쪽 돌기. 주 채집지: 깊은 숲.'},
@@ -9,6 +10,7 @@ export const SPECIES={
  saw:{name:'톱사슴벌레',latin:'Prosopocoilus inclinatus inclinatus',color:'#bf7954',male:[25,68],female:[23,34],bredMale:[25,74],bredFemale:[23,38],power:1.03,grip:1.02,rarity:0,preferred:['sap'],note:'안쪽으로 휘어진 톱니 모양 큰턱과 적갈색 몸. 암컷은 짧은 턱과 둥근 몸을 가집니다. 주 채집지: 수액 나무길·버드나무 둔치.'},
  little:{name:'애사슴벌레',latin:'Dorcus rectus rectus',color:'#929185',male:[20,50],female:[20,30],bredMale:[20,55],bredFemale:[20,33],power:.92,grip:1.06,rarity:0,preferred:['bark'],note:'작고 길쭉한 검은 몸. 수컷의 가느다란 큰턱 안쪽에는 돌기가 있습니다. 주 채집지: 잡목 숲·참나무 공동.'},
  stag:{name:'사슴벌레',latin:'Lucanus maculifemoratus dybowskyi',color:'#b69a6b',male:[35,68],female:[23,39],bredMale:[35,74],bredFemale:[23,43],power:1.05,grip:1.01,rarity:1,preferred:['sap','leaf'],note:'수컷의 머리 뒤쪽이 귀처럼 돌출되고 큰턱에 여러 톱니가 있습니다. 몸에는 짧은 털이 납니다. 주 채집지: 서늘한 산 능선·고산 활엽수림.'},
+ ...FOREIGN_SPECIES,
 };
 export const LOCATION_REGIONS={all:'전체',lowland:'평지·수액',woodland:'고목·잡목',highland:'서늘한 산지',south:'남쪽 섬'};
 export const LOCATIONS={

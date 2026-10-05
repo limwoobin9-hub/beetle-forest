@@ -5,7 +5,7 @@ import {marketValue,listAuction,syncAuctions,cancelAuction,marketPlan,auctionRes
 import {createLine,lineStats} from '../dist/lines.js';
 import {PARTS,PIN_POINT} from '../dist/specimens.js';
 import {worldKeys,loadWorld,saveWorld} from '../dist/worlds.js';
-import {traitPremium} from '../dist/traits.js';
+import {traitPremium,speciesTraits} from '../dist/traits.js';
 const NOW=1800000000000;
 const bug=(species='flat',sex='male',traits=[])=>createBug(species,sex,.7,1,'채집',null,1,null,{traits});
 function stock(){const s=newGame(NOW),m=bug(),f=bug('flat','female');s.bugs.push(m,f);s.inventory.basic_mat=100;s.substrate=100;return {s,m,f};}
@@ -16,8 +16,8 @@ function specimen(s,b){b.health=20;b.hunger=0;b.hygiene=0;for(let i=0;i<CRITICAL
 test('all species and both sexes value large and rare individuals above small basic stock',()=>{
  const traits={king:'king_white_eye',flat:'flat_long',rhino:'rhino_red',redleg:'redleg_crimson',dauria:'dauria_amber',twospot:'twospot_gold',saw:'saw_red',little:'little_white_eye',stag:'stag_gold'};
  for(const species of Object.keys(SPECIES))for(const sex of ['male','female']){
-  const small=bug(species,sex),large=bug(species,sex),rare=bug(species,sex,[traits[species]]);const range=sex==='male'?SPECIES[species].bredMale:SPECIES[species].bredFemale;small.length=range[0];large.length=range[1];rare.length=large.length;
-  const a=marketValue('adult',small),b=marketValue('adult',large),c=marketValue('adult',rare);assert.ok(a.value<b.value&&b.value<c.value);assert.ok(a.demand<b.demand&&b.demand<=c.demand);assert.ok(a.value<40);
+  const small=bug(species,sex),large=bug(species,sex),rare=bug(species,sex,[traits[species]||speciesTraits(species)[0].id]);const range=sex==='male'?SPECIES[species].bredMale:SPECIES[species].bredFemale;small.length=range[0];large.length=range[1];rare.length=large.length;
+  const a=marketValue('adult',small),b=marketValue('adult',large),c=marketValue('adult',rare);assert.ok(a.value<b.value&&b.value<c.value);assert.ok(a.demand<b.demand&&b.demand<=c.demand);assert.ok(a.value<(SPECIES[species].foreign?100:40));
  }
 });
 test('large parental measurements and matching rare parents increase larval bundle value',()=>{

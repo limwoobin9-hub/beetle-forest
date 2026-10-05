@@ -90,13 +90,13 @@ export function validLineage(state,value,species){
  if(value===undefined||value===null)return true;
  return !!value&&typeof value==='object'&&!Array.isArray(value)&&typeof value.lineId==='string'&&lineById(state,value.lineId)?.species===species&&Number.isInteger(value.generation)&&value.generation>=0&&value.generation<=state.day+state.lines.length&&['founder','linebred','outcross','cross'].includes(value.kind)&&(value.generation===0?value.kind==='founder':value.kind!=='founder');
 }
-const validSale=s=>s===undefined||!!s&&typeof s==='object'&&['adult','larva','specimen'].includes(s.kind)&&Number.isSafeInteger(s.at)&&s.at>=0&&Number.isInteger(s.amount)&&s.amount>=1&&s.amount<=200000&&Number.isInteger(s.buyer)&&s.buyer>=0&&s.buyer<16&&(s.kind!=='larva'||s.heads===3);
+const validSale=s=>s===undefined||!!s&&typeof s==='object'&&['adult','larva','specimen'].includes(s.kind)&&Number.isSafeInteger(s.at)&&s.at>=0&&Number.isInteger(s.amount)&&s.amount>=1&&s.amount<=200000&&(Number.isInteger(s.buyer)&&s.buyer>=0&&s.buyer<16||s.buyer==='의뢰 수집가')&&(s.kind!=='larva'||s.heads===3);
 export function validLines(state){
  if(state.lines===undefined)return true;
  if(!Array.isArray(state.lines)||state.lines.length>MAX_LINES)return false;
  const ids=new Set(),names=new Set(),recordIds=new Set();
  if(state.lines.some(line=>!line||typeof line.id!=='string'||!line.id||!Object.hasOwn(SPECIES,line.species)))return false;
- const snapshot=(b,species)=>b&&typeof b.id==='string'&&typeof b.name==='string'&&b.name.length<=60&&b.species===species&&['male','female'].includes(b.sex)&&Number.isFinite(b.length)&&b.length>=1&&b.length<=100&&validTraits(species,b.traits)&&validLineage(state,b.lineage,species)&&validSale(b.sale);
+ const snapshot=(b,species)=>b&&typeof b.id==='string'&&typeof b.name==='string'&&b.name.length<=60&&b.species===species&&['male','female'].includes(b.sex)&&Number.isFinite(b.length)&&b.length>=1&&b.length<=200&&validTraits(species,b.traits)&&validLineage(state,b.lineage,species)&&validSale(b.sale);
  for(const line of state.lines){
   if(ids.has(line.id)||typeof line.name!=='string'||checkSavedName(line.name)===false||names.has(nameKey(line.name))||!Number.isInteger(line.created)||line.created<1||line.created>state.day||typeof line.archived!=='boolean'||!Array.isArray(line.founders)||line.founders.length!==2||!line.founders.every(b=>snapshot(b,line.species)&&b.lineage?.lineId===line.id&&b.lineage.generation===0&&validLineage(state,b.originLineage,line.species))||line.founders[0].sex!=='male'||line.founders[1].sex!=='female'||line.founders[0].id===line.founders[1].id||!Array.isArray(line.records)||line.records.length>MAX_RECORDS)return false;
   ids.add(line.id);names.add(nameKey(line.name));

@@ -1,7 +1,7 @@
 // Keep the original six species and extend the same integer-pixel style.
 // Photo references are documented; no source photographs ship with the game.
 import {stepHabitat} from './habitat.js';
-import {drawLateral,PIXEL_ANATOMY} from './beetle-pixels.js';
+import {drawDorsal,drawLateral,PIXEL_ANATOMY} from './beetle-pixels.js';
 const sprites = new Map();
 const urls = new Map();
 const backgrounds = new Map();
@@ -23,6 +23,7 @@ function line(c,points,color,width=1){const p=pen(c);for(let i=1;i<points.length
 function oval(c,x,y,w,h,color){const p=pen(c);for(let j=0;j<h;j++){const extent=Math.sqrt(Math.max(0,1-((j+.5-h/2)/(h/2))**2))*w/2;const left=Math.ceil(w/2-extent-.5),right=Math.floor(w/2+extent-.5);if(right>=left)p(x+left,y+j,right-left+1,1,color);}}
 export function bugSprite(species='king',sex='male',traits=[]){
   const key=species+sex+'-'+[...traits].sort().join(',');if(sprites.has(key))return sprites.get(key);
+  if(!['king','flat','rhino','redleg','dauria','twospot','saw','little','stag'].includes(species)){const cvs=document.createElement('canvas');cvs.width=48;cvs.height=72;drawDorsal(cvs.getContext('2d'),species,sex,traits,{pen,poly,line,oval});sprites.set(key,cvs);return cvs;}
   if(['saw','little','stag'].includes(species)){const cvs=additionalBugSprite(species,sex,traits);sprites.set(key,cvs);return cvs;}
   if(['redleg','dauria','twospot'].includes(species)){const cvs=rareBugSprite(species,sex,traits);paintTraits(cvs,species,sex,traits);sprites.set(key,cvs);return cvs;}
   const cvs=document.createElement('canvas');cvs.width=48;cvs.height=72;const c=cvs.getContext('2d'),p=pen(c);
@@ -154,7 +155,7 @@ export function spriteURL(species,sex,traits=[]){const key=species+sex+'-'+[...t
 export function specimenBodyURL(species,sex,traits=[]){
  const key='specimen-body-'+species+sex+'-'+[...traits].sort().join(',');if(urls.has(key))return urls.get(key);
  const canvas=document.createElement('canvas');canvas.width=48;canvas.height=72;const c=canvas.getContext('2d');c.imageSmoothingEnabled=false;c.drawImage(bugSprite(species,sex,traits),0,0);
- const a=PIXEL_ANATOMY[species],hy=sex==='male'?(species==='rhino'?22:['little','redleg','dauria'].includes(species)?20:18):17;
+ const a=PIXEL_ANATOMY[species],hy=sex==='male'?(a.maleHeadY||(species==='rhino'||a.horn?22:['little','redleg','dauria'].includes(species)?20:18)):17;
  for(let y=0;y<72;y++){
   const width=y<hy+10?(sex==='male'?Math.max(a.head,species==='stag'?32:0):a.femaleHead):y<hy+20?a.thorax:sex==='female'&&species==='saw'?26:a.body;
   const left=y<hy?5:Math.floor(24-width/2),right=y<hy?43:Math.ceil(24+width/2);
@@ -404,7 +405,23 @@ export function productURL(id,product){
  }else if(product.kind==='trap'){
   p(14,34,36,19,'#775a3c');p(17,37,30,13,'#d4b374');p(18,25,27,4,'#7a7751');p(19,16,3,23,'#819363');p(41,16,3,23,'#819363');p(19,13,25,5,color);oval(c,24,25,14,12,color);p(25,27,5,2,'#fff0af');
  }else if(product.kind==='gear'){
-  p(8,46,48,9,'#785d40');p(12,42,40,5,color);p(16,24,8,20,'#9f7a49');p(38,19,7,25,'#9f7a49');line(c,[[20,25],[27,33],[34,28],[41,20]],'#e4c888',2);p(14,47,36,2,'#c09c5a');
+  if(id==='field_lens'){
+   line(c,[[31,37],[47,53]],'#40584e',9);line(c,[[33,39],[45,51]],'#9b9772',4);oval(c,8,8,35,35,'#465e53');oval(c,12,12,27,27,color);oval(c,16,16,19,19,'#c7e1cc');p(18,19,4,10,'#edf1cf');p(24,27,8,3,'#98bcad');
+  }else if(id==='temperature_cabinet'){
+   p(12,7,40,49,'#4f6667');p(15,10,34,42,color);p(18,17,24,29,'#b8c9b3');p(20,19,20,25,'#718b7a');p(20,29,20,2,'#d7d6b5');p(23,22,7,6,'#c5b27f');p(31,33,7,7,'#d6c293');p(44,25,2,13,'#eee3bd');p(17,12,15,3,'#d8e7cf');p(36,11,8,5,'#4b6c64');p(15,56,6,3,'#514e39');p(43,56,6,3,'#514e39');
+  }else if(id==='humidifier'){
+   p(15,31,34,25,'#526d62');p(18,34,28,18,color);p(22,23,20,10,'#bccdbb');p(27,19,10,6,'#729986');p(25,39,15,5,'#d8e7cc');p(31,42,3,7,'#698e83');p(18,53,28,3,'#b7c4a3');line(c,[[30,18],[28,13],[32,8]],'#b4cbb8',3);line(c,[[39,22],[42,16],[40,12]],'#d5dfc6',2);
+  }else if(id==='deep_bedding'||id==='giant_tub'){
+   p(10,13,44,5,'#5e7262');p(12,18,40,37,color);p(15,24,34,28,'#c3c7a5');p(16,36,32,15,'#776143');p(16,36,32,3,'#a38956');p(16,25,3,22,'#eef1d1');p(21,20,22,2,'#dfe1bd');for(let i=0;i<16;i++)p(19+(i*7)%27,40+(i*5)%10,2,1,'#b39a66');if(id==='giant_tub'){p(24,27,17,7,'#ece9cc');p(27,29,11,2,'#729078');}
+  }else if(id==='wide_holder'){
+   p(9,41,46,11,'#695537');p(12,34,40,8,color);p(17,27,30,9,'#dfc28c');oval(c,21,25,22,15,'#eee0b5');oval(c,24,27,16,10,'#d3a455');p(27,28,8,2,'#fff0c2');p(14,44,4,4,'#b29963');p(46,44,4,4,'#b29963');
+  }else if(id==='spawn_logs'){
+   p(9,47,46,7,'#6b563c');p(13,20,13,29,'#8c6d47');p(29,13,15,36,color);p(44,25,7,24,'#b18e5b');p(15,20,9,5,'#d9bd86');p(31,13,11,6,'#dbc38e');p(46,25,4,4,'#e4c997');line(c,[[18,27],[21,33],[18,42]],'#5e5136',2);line(c,[[36,24],[33,35],[38,43]],'#6a5739',2);p(12,50,39,2,'#b79e6b');
+  }else if(id==='specimen_table'){
+   p(8,37,48,7,'#64766c');p(11,39,42,2,color);p(13,44,5,13,'#8b7854');p(46,44,5,13,'#8b7854');p(15,29,21,8,'#e9deba');p(18,31,15,3,'#96a183');p(43,12,4,26,'#61766c');p(36,11,14,7,color);p(39,17,8,5,'#e2d2a0');line(c,[[44,10],[38,5],[31,5]],'#6f7966',3);p(25,4,12,5,'#9dada0');p(24,9,9,3,'#ecd698');
+  }else{
+   p(8,46,48,9,'#785d40');p(12,42,40,5,color);p(16,24,8,20,'#9f7a49');p(38,19,7,25,'#9f7a49');line(c,[[20,25],[27,33],[34,28],[41,20]],'#e4c888',2);p(14,47,36,2,'#c09c5a');
+  }
  }else{
   poly(c,[[14,11],[50,11],[53,17],[50,56],[15,56],[11,18]],'#554e35');poly(c,[[16,13],[48,13],[50,18],[47,53],[17,53],[14,19]],color);p(14,16,36,3,'#b3b983');p(20,25,24,18,'#efe5bd');p(24,29,16,3,'#66724c');p(24,35,13,2,'#9a9b6b');p(25,40,11,1,'#b6ad76');p(17,47,30,2,'#ffffff22');
  }

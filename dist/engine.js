@@ -1,5 +1,7 @@
+import {newCareer,migrateCareer,recordCare,validCareer,syncLeague,leagueClass,LEAGUE_CLASSES,recordLeagueFight} from './career.js';
+import {syncForeignTrip,validOverseas} from './overseas.js';
 import {newDailyEvents,migrateDailyEvents,validDailyEvents,takeEventGuest,claimDailyEvent} from './events.js';
-import {PRODUCTS,LEVEL_XP,keeperLevel,compatibleFood,syncSupplies,shopAccess,isLarva,isAdultBedding,adultBeddingItems,adultBeddingCount} from './catalog.js';
+import {PRODUCTS,LEVEL_XP,keeperLevel,compatibleFood,syncSupplies,shopAccess,isLarva,isAdultBedding,adultBeddingItems,adultBeddingCount,equipmentEffects} from './catalog.js';
 import {SPECIES,LOCATIONS,sizeRange,captureDifficulty} from './world.js';
 export {SPECIES,LOCATIONS,captureDifficulty};
 import {RESEARCH_REQUESTS,currentResearch} from './research.js';
@@ -25,10 +27,10 @@ export function createBug(species, sex, genetic, day, source = '채집', parents
   return { id: uuid(), species, sex, traits:[...features], genetic: trait, length, name: SPECIES[species].name, hunger: 76, health: 95, hygiene: 90, born: day, source, parents, wins: 0, losses: 0, bredDay: -99, fightDay: -99, favorite:false,criticalDays:0 };
 }
 export function newGame(now=Date.now()) {
-  return {version:5,dailyEvents:newDailyEvents(),lines:[],auctions:[],settings:{realTime:false,realGrowth:false},clock:{anchorAt:now},totalBreedings:0,totalEmergences:0,traps:[],researchClaimed:[],memorials:[],specimenCases:[{id:'case-1',name:'표본 케이스 1'}],careAidDay:0,day:1,coins:350,xp:0,inventory:{banana:6,basic_mat:4},jelly:6,substrate:4,energy:5,bugs:[],broods:[],discoveries:[],captures:0,records:{},fight:null,expedition:null,log:[]};
+  return {version:5,career:newCareer(),foreignTrip:null,dailyEvents:newDailyEvents(),lines:[],auctions:[],settings:{realTime:false,realGrowth:false},clock:{anchorAt:now},totalBreedings:0,totalEmergences:0,traps:[],researchClaimed:[],memorials:[],specimenCases:[{id:'case-1',name:'표본 케이스 1'}],careAidDay:0,day:1,coins:350,xp:0,inventory:{banana:6,basic_mat:4},jelly:6,substrate:4,energy:5,bugs:[],broods:[],discoveries:[],captures:0,records:{},fight:null,expedition:null,log:[]};
 }
 export function migrateSave(state,now=Date.now()){
-  if(state.version===5){migrateDailyEvents(state,now);state.lines??=[];state.auctions??=[];migrateTraits(state);migrateGrowthPlans(state);migrateClock(state,now);return state;}
+  if(state.version===5){migrateDailyEvents(state,now);state.lines??=[];state.auctions??=[];migrateTraits(state);migrateGrowthPlans(state);migrateCareer(state);migrateClock(state,now);return state;}
   if(![1,2,3,4].includes(state.version))return state;
   if(state.version===1){
   const defaults=state.bugs.filter(b=>b.source==='첫 친구');
@@ -54,7 +56,7 @@ export function migrateSave(state,now=Date.now()){
   if(state.version<4){state.settings={realTime:false,realGrowth:false};state.clock={anchorAt:now};state.broods.forEach(b=>b.growthMode='fast');state.bugs.forEach(b=>b.favorite=!!b.favorite);}
   state.memorials=[];state.specimenCases=[{id:'case-1',name:'표본 케이스 1'}];state.careAidDay=0;state.bugs.forEach(b=>b.criticalDays=0);
   if(state.expedition?.encounter)state.expedition.encounter.bug.criticalDays=0;
-  state.version=5;migrateDailyEvents(state,now);state.lines??=[];state.auctions??=[];migrateTraits(state);migrateGrowthPlans(state);migrateClock(state,now);return state;
+  state.version=5;migrateDailyEvents(state,now);state.lines??=[];state.auctions??=[];migrateTraits(state);migrateGrowthPlans(state);migrateCareer(state);migrateClock(state,now);return state;
 }
 function migrateClock(state,now){
  if(state.clock.calendar)return;
@@ -77,31 +79,35 @@ export function care(state,id,kind,itemId){
   if(kind==='jelly'&&product?.kind!=='jelly')throw new Error('사용할 젤리를 선택하세요.');
   if(kind==='jelly'){
     if(b.hunger>=100&&b.health>=100)throw new Error('포만감과 건강이 이미 100입니다.');
-    spend(state,item);b.hunger=100;b.health=clamp(b.health+product.health);b.dietDays=product.duration;b.dietDecay=product.decay;b.jellyId=item;
+    spend(state,item);b.hunger=100;b.health=clamp(b.health+product.health+equipmentEffects(state,b.species).jellyHealth);b.dietDays=product.duration;b.dietDecay=product.decay;b.jellyId=item;
   }else if(kind==='clean'){
     if(b.hygiene>=100)throw new Error('청결이 이미 100입니다.');
     spend(state,item);b.hygiene=100;b.health=clamp(b.health+8);b.beddingDays=product.duration;b.beddingDecay=product.hygiene;b.matId=item;
   }else throw new Error('알 수 없는 돌봄입니다.');
   if(b.health>CRITICAL_HEALTH)b.criticalDays=0;
   if(b['xp_'+kind]!==state.day){gainXP(state,5);b['xp_'+kind]=state.day;}
-  note(state,`${b.name} · ${product.name} 사용`);return b;
+  recordCare(state,b);note(state,`${b.name} · ${product.name} 사용`);return b;
 }
 export function buy(state,id){
   const item=PRODUCTS[id];if(!item)throw new Error('상품을 선택하세요.');
   const access=shopAccess(state,item.area);if(!access.unlocked)throw new Error(access.missing.join(' · ')+' 필요');
   if(state.coins<item.price)throw new Error('잎사귀가 부족합니다.');
+  if(item.kind==='gear'&&state.inventory[id])throw new Error('이미 보유한 영구 설비입니다.');
   state.coins-=item.price;state.inventory[id]=(state.inventory[id]||0)+item.qty;syncSupplies(state);
   note(state,`${item.name} ${item.qty}개 구매`);return `${item.name} ${item.qty}개 구매`;
 }
-export function startExpedition(state,location,random=Math.random){
+export function startExpedition(state,location,random=Math.random,{focus='standard'}={}){
+  if(!['standard','large'].includes(focus))throw new Error('탐사 방식을 선택하세요.');
   if(state.expedition)throw new Error('진행 중인 채집을 먼저 마치세요.');
   if(!Object.hasOwn(LOCATIONS,location))throw new Error('채집 장소를 선택하세요.');
-  if(state.energy<LOCATIONS[location].cost)throw new Error('오늘 탐험 횟수를 모두 사용했습니다.');
+  const cost=focus==='large'?Math.max(2,LOCATIONS[location].cost):LOCATIONS[location].cost;
+  if(focus==='large'&&state.coins<40)throw new Error('대형 개체 탐사비 40 잎사귀가 필요합니다.');
+  if(state.energy<cost)throw new Error('오늘 탐험 횟수를 모두 사용했습니다.');
   if(state.bugs.length+state.broods.length*3+auctionReserved(state)>=48)throw new Error('사육실 수용량은 48마리입니다.');
-  state.energy-=LOCATIONS[location].cost;
+  state.energy-=cost;if(focus==='large')state.coins-=40;
   const spots=Array.from({length:7},(_,i)=>({x:46+i*60+Math.floor(random()*12),y:90+Math.floor(random()*105),kind:['sap','bark','leaf'][Math.floor(random()*3)],searched:false,rich:random()<0.55}));
   const guaranteed=Math.floor(random()*spots.length);spots[guaranteed].rich=true;
-  state.expedition={id:uuid(),location,spots,noise:0,phase:'search',encounter:null,attempts:0};
+  state.expedition={id:uuid(),location,focus,spots,noise:0,phase:'search',encounter:null,attempts:0};
   return state.expedition;
 }
 export function inspectSpot(state,index,random=Math.random){
@@ -112,7 +118,7 @@ export function inspectSpot(state,index,random=Math.random){
   let roll=random();const entries=Object.entries(LOCATIONS[e.location].chances);let species=entries.at(-1)[0];
   const weights=entries.map(([sp,v])=>v*(SPECIES[sp].preferred.includes(spot.kind)?1.35:1)*(SPECIES[sp].rarity&&!spot.rich?.35:1));const total=weights.reduce((a,b)=>a+b,0);roll*=total;
   for(let i=0;i<entries.length;i++){roll-=weights[i];if(roll<=0){species=entries[i][0];break;}}
-  const sex=random()<.52?'male':'female',genetic=clamp((random()+random()+random())/3+(random()<.006?.16:0),0,1);
+  const sex=random()<.52?'male':'female',genetic=clamp((e.focus==='large'?.55:.25)+(random()+random()+random())/3*(e.focus==='large'?.45:.75)+(state.inventory.field_lens?.04:0)+(random()<.006?.10:0),0,1);
   const bug=createBug(species,sex,genetic,state.day,LOCATIONS[e.location].name,null,.5+random()*.4,null,{random});
   e.encounter={bug,x:spot.x,y:spot.y,alert:clamp(e.noise+SPECIES[species].rarity*8+LOCATIONS[e.location].difficulty*3),speed:(0.75+genetic*.55)*(1+SPECIES[species].rarity*.32),start:random()*Math.PI*2};e.phase='approach';
   return e.encounter;
@@ -147,7 +153,7 @@ export function breed(state, maleId, femaleId, random=Math.random, mediumId='bas
   const lineage=offspringLineage(state,m,f,chosenLineId);checkLineCapacity(state,lineage);
   spend(state,mediumId,2);gainXP(state,30);m.bredDay=state.day;f.bredDay=state.day;m.hunger=clamp(m.hunger-12);f.hunger=clamp(f.hunger-18);
   const parents=[m,f].map(snapshotBug);
-  const children=Array.from({length:3},()=>({sex:random()<.5?'male':'female',genetic:clamp((m.genetic+f.genetic)/2+(random()-.5)*.24,0,1)}));
+  const children=Array.from({length:3},()=>({sex:random()<.5?'male':'female',genetic:clamp((m.genetic+f.genetic)/2+(random()-.5)*.24+equipmentEffects(state,m.species).genetic,0,1)}));
   children.forEach(child=>child.traits=inheritTraits(m.species,parents,random));
   const brood={id:uuid(),species:m.species,lineage,parents,children,started:state.day,age:0,growthMode:state.settings?.realGrowth?'natural':'fast',growthPlan:rollGrowthPlan(m.species,random),food:100,qualitySum:0,qualityDays:0,foodSum:0,nutritionSum:0,fungusSum:0,medium:mediumId};
   state.broods.push(brood);recordLineBrood(state,brood);state.totalBreedings++;note(state,`${SPECIES[m.species].name} 산란 · 알 3개`);
@@ -181,7 +187,7 @@ function applyDay(state){
   state.fight=null;
   state.day++;state.energy=5;const events=[];
   const dead=[];
-  for(const b of state.bugs){b.hunger=clamp(b.hunger-adultDecay(b,'jelly',state.settings.realTime));b.hygiene=clamp(b.hygiene-adultDecay(b,'clean',state.settings.realTime));b.dietDays=Math.max(0,(b.dietDays||0)-1);b.beddingDays=Math.max(0,(b.beddingDays||0)-1);b.health=clamp(b.health+(b.hunger<25?-10:b.hygiene<25?-7:3));b.criticalDays=b.health<=CRITICAL_HEALTH?(b.criticalDays||0)+1:0;if(b.criticalDays>=CRITICAL_DAYS){dead.push(b.id);state.memorials.push({id:b.id,bug:structuredClone(b),diedDay:state.day,status:'stored',preparedDay:null,readyDay:null,mountedDay:null,caseId:null,slot:null,work:null,caption:''});events.push(`${b.name} 사망 · 건강 ${CRITICAL_HEALTH} 이하 ${CRITICAL_DAYS}일 연속 · 보관함으로 이동`);}}
+  for(const b of state.bugs){b.hunger=clamp(b.hunger-adultDecay(b,'jelly',state.settings.realTime));b.hygiene=clamp(b.hygiene-adultDecay(b,'clean',state.settings.realTime)*equipmentEffects(state,b.species).beddingDecay);b.dietDays=Math.max(0,(b.dietDays||0)-1);b.beddingDays=Math.max(0,(b.beddingDays||0)-1);b.health=clamp(b.health+(b.hunger<25?-10:b.hygiene<25?-7:3));b.criticalDays=b.health<=CRITICAL_HEALTH?(b.criticalDays||0)+1:0;if(b.criticalDays>=CRITICAL_DAYS){dead.push(b.id);state.memorials.push({id:b.id,bug:structuredClone(b),diedDay:state.day,status:'stored',preparedDay:null,readyDay:null,mountedDay:null,caseId:null,slot:null,work:null,caption:''});events.push(`${b.name} 사망 · 건강 ${CRITICAL_HEALTH} 이하 ${CRITICAL_DAYS}일 연속 · 보관함으로 이동`);}}
   state.bugs=state.bugs.filter(b=>!dead.includes(b.id));
   for(const m of state.memorials){const progress=tickSpecimen(m,state.day);if(progress)events.push(`${m.bug.name} · ${progress}`);}
   const support=dailySupport(state);state.coins+=support.total;
@@ -193,7 +199,7 @@ function applyDay(state){
       b.foodSum??=Math.min(b.qualityDays,b.qualitySum/nutrition);b.nutritionSum??=b.qualityDays*nutrition;
       b.foodSum+=b.food/100*weight;b.nutritionSum+=nutrition*weight;
       b.fungusSum??=0;if(PRODUCTS[b.medium]?.kind==='fungus')b.fungusSum+=weight;
-      b.qualitySum+=b.food/100*nutrition*weight;b.qualityDays+=weight;b.food=clamp(b.food-60/larvalFoodInterval(b,state.settings.realTime));
+      b.qualitySum+=b.food/100*nutrition*weight;b.qualityDays+=weight;b.food=clamp(b.food-60/(larvalFoodInterval(b,state.settings.realTime)*equipmentEffects(state,b.species).foodInterval));
     }
     b.age++;
     const stage=broodStage(b),label=SPECIES[b.species].name;
@@ -209,12 +215,13 @@ function applyDay(state){
   }
   state.broods=state.broods.filter(b=>!ready.includes(b.id));
   gainXP(state,4);note(state,`${state.day}일째 · 지원금 ${support.total} 잎사귀${support.adults||support.offspring?` · 성충 ${support.adults}마리 · 번식통 후손 ${support.offspring}마리 · 관리 보너스 ${support.careBonus}`:''}`);
-  events.forEach(e=>note(state,e));
+  events.forEach(e=>note(state,e));syncLeague(state);
   return events;
 }
 export function syncRealTime(state,now=Date.now()){
  migrateGrowthPlans(state);
- const auctionResult=syncAuctions(state,now),auctionMeta=auctionResult.changed?{auctionChanges:true,auctionEvents:auctionResult.events}:{};
+ const tripChanged=syncForeignTrip(state,now),leagueChanged=syncLeague(state),progressChanges=tripChanged||leagueChanged;
+ const auctionResult=syncAuctions(state,now),auctionMeta=auctionResult.changed?{auctionChanges:true,auctionEvents:auctionResult.events}:{};if(progressChanges)auctionMeta.progressChanges=true;
  if(!state.settings?.realTime)return {days:0,events:[],...auctionMeta};
  if(!Number.isFinite(now)||now<0)throw new Error('현재 시간을 확인할 수 없습니다.');
  const days=Math.min(Math.max(0,state.clock.calendar?calendarDay(now)-calendarDay(state.clock.anchorAt):Math.floor((now-state.clock.anchorAt)/DAY_MS)),1000000-state.day);
@@ -231,7 +238,7 @@ export function syncRealTime(state,now=Date.now()){
   for(let level=oldLevel+1;level<=keeperLevel(state);level++){const offset=Math.ceil((LEVEL_XP[level-1]-beforeXP)/4);if(offset>=first)levels.set(offset,level);}
   for(let i=first;i<=rest;i++){if(levels.has(i))note(state,`사육 레벨 ${levels.get(i)} 도달 · 상점 개방 조건 확인`,before+i);note(state,`${before+i}일째 · 지원금 ${DAILY_SUPPORT_RULES.base} 잎사귀`,before+i);}
  }
- state.clock.anchorAt=state.clock.calendar?midnightAt(now):state.clock.anchorAt+days*DAY_MS;
+ syncLeague(state);state.clock.anchorAt=state.clock.calendar?midnightAt(now):state.clock.anchorAt+days*DAY_MS;
  return {days,events,...auctionMeta};
 }
 export function setTimeOptions(state,{realTime,realGrowth},now=Date.now()){
@@ -284,16 +291,17 @@ export function makeOpponent(state,id,random=Math.random){
  const b=bugOf(state,id);if(b.sex!=='male')throw new Error('성충 수컷만 참가할 수 있습니다.');
  if(b.health<60||b.hunger<40)throw new Error('건강 60·포만감 40 이상이 필요합니다.');
  if(b.fightDay===state.day)throw new Error('오늘 이미 참가한 개체입니다.');
- const pool=['king','flat','rhino','saw','little','stag','king','flat','rhino','saw','little','redleg','dauria','twospot'];
- const sp=pool[Math.floor(random()*pool.length)],trait=clamp(.22+(random()+random())*.34,0,1);
+ syncLeague(state);const division=leagueClass(b),bounds=LEAGUE_CLASSES[division],pool=Object.keys(SPECIES).filter(sp=>SPECIES[sp].male[1]>=bounds.min&&SPECIES[sp].male[0]<bounds.max);
+ const sp=pool[Math.floor(random()*pool.length)],range=SPECIES[sp].male,desired=clamp(b.length*(.9+random()*.2),Math.max(range[0],bounds.min),Math.min(range[1],bounds.max-.1)),trait=Math.pow((desired-range[0])/(range[1]-range[0]),1/1.6);
  const rival=createBug(sp,'male',trait,state.day,'투곤 상대',null,1,null,{random});
- state.fight={model:3,bugId:id,rival,elapsed:0,position:0,playerStamina:100+(b.trainingStamina||0)*1.5,opponentStamina:100,events:[],finished:false};
+ state.fight={model:3,leagueClass:division,bugId:id,rival,elapsed:0,position:0,playerStamina:100+(b.trainingStamina||0)*1.5,opponentStamina:100,events:[],finished:false};
  return state.fight;
 }
 function finishFight(state,fight,won,retreated=false){
  const b=bugOf(state,fight.bugId);fight.finished=true;fight.won=won;fight.retreated=retreated;b.fightDay=state.day;
  b.hunger=clamp(b.hunger-12);b.health=clamp(b.health-(retreated?2:5));
  if(won){b.wins++;state.coins+=65;gainXP(state,20);}else{b.losses++;if(!retreated){state.coins+=20;gainXP(state,8);}}
+ recordLeagueFight(state,b,won,retreated);
  note(state,`${b.name} 투곤 ${retreated?'기권':won?'승리 · +65 잎사귀':'패배 · +20 잎사귀'}`);
 }
 export function advanceFight(state,random=Math.random){
@@ -348,9 +356,9 @@ export function validateSave(s){
   if(!s||![1,2,3,4,5].includes(s.version)||!finite(s.day,1,1000000)||!Number.isInteger(s.day)||!finite(s.coins,0,1e9)||!finite(s.jelly,0,1e6)||!finite(s.substrate,0,1e6)||!finite(s.energy,0,5))return false;
   if(!Array.isArray(s.bugs)||s.bugs.length>48||!Array.isArray(s.broods)||s.broods.length>3||s.bugs.length+s.broods.length*3>48||!Array.isArray(s.log)||!Array.isArray(s.discoveries)||!s.records||!finite(s.captures,0,1e9))return false;
   if(s.version>=4&&(!s.settings||typeof s.settings.realTime!=='boolean'||typeof s.settings.realGrowth!=='boolean'||s.settings.realGrowth&&!s.settings.realTime||!s.clock||!finite(s.clock.anchorAt,0,8.64e15)||(s.clock.calendar!==undefined&&typeof s.clock.calendar!=='boolean')))return false;
-  if(!validLines(s)||s.dailyEvents!==undefined&&!validDailyEvents(s.dailyEvents))return false;
+  if(!validCareer(s)||!validLines(s)||s.dailyEvents!==undefined&&!validDailyEvents(s.dailyEvents))return false;
   if(s.worldExchange!==undefined&&(!s.worldExchange||!Number.isSafeInteger(s.worldExchange.lastAt)||!finite(s.worldExchange.lastAt,1,8.64e15)))return false;
-  const validBug=b=>b&&typeof b.id==='string'&&Object.hasOwn(SPECIES,b.species)&&validTraits(b.species,b.traits)&&validLineage(s,b.lineage,b.species)&&['male','female'].includes(b.sex)&&typeof b.name==='string'&&b.name.length<=60&&finite(b.length,1,100)&&finite(b.genetic,0,1)&&['hunger','health','hygiene'].every(k=>finite(b[k],0,100))&&finite(b.born,1,s.day)&&finite(b.bredDay,-99,s.day)&&finite(b.fightDay,-99,s.day)&&finite(b.wins,0,1e6)&&finite(b.losses,0,1e6)&&['dietDays','beddingDays'].every(k=>b[k]===undefined||finite(b[k],0,4))&&['dietDecay','beddingDecay'].every(k=>b[k]===undefined||finite(b[k],0,100))&&['trainingGrip','trainingStamina'].every(k=>b[k]===undefined||finite(b[k],0,12))&&(b.favorite===undefined||typeof b.favorite==='boolean');
+  const validBug=b=>b&&typeof b.id==='string'&&Object.hasOwn(SPECIES,b.species)&&validTraits(b.species,b.traits)&&validLineage(s,b.lineage,b.species)&&['male','female'].includes(b.sex)&&typeof b.name==='string'&&b.name.length<=60&&finite(b.length,1,200)&&finite(b.genetic,0,1)&&['hunger','health','hygiene'].every(k=>finite(b[k],0,100))&&finite(b.born,1,s.day)&&finite(b.bredDay,-99,s.day)&&finite(b.fightDay,-99,s.day)&&finite(b.wins,0,1e6)&&finite(b.losses,0,1e6)&&['dietDays','beddingDays'].every(k=>b[k]===undefined||finite(b[k],0,4))&&['dietDecay','beddingDecay'].every(k=>b[k]===undefined||finite(b[k],0,100))&&['trainingGrip','trainingStamina'].every(k=>b[k]===undefined||finite(b[k],0,12))&&(b.favorite===undefined||typeof b.favorite==='boolean');
   if(s.version>=2){
     if(!finite(s.xp,0,1e9)||!s.inventory||typeof s.inventory!=='object'||Array.isArray(s.inventory)||Object.entries(s.inventory).some(([id,n])=>!Object.hasOwn(PRODUCTS,id)||!finite(n,0,1e6)||!Number.isInteger(n)))return false;
     if(s.expedition){const e=s.expedition;if(!Object.hasOwn(LOCATIONS,e.location)||!['search','approach','catch'].includes(e.phase)||!Array.isArray(e.spots)||e.spots.length!==7||!finite(e.noise,0,100)||!finite(e.attempts,0,3)||e.spots.some(p=>!finite(p.x,0,480)||!finite(p.y,0,276)||typeof p.searched!=='boolean'||typeof p.rich!=='boolean'||!['sap','bark','leaf'].includes(p.kind)))return false;if(e.player&&(!finite(e.player.x,20,460)||!finite(e.player.y,85,260)))return false;if(e.phase!=='search'&&(!e.encounter||!finite(e.encounter.alert,0,100)||!finite(e.encounter.speed,.1,10)||!finite(e.encounter.start,0,7)||!finite(e.encounter.x,0,480)||!finite(e.encounter.y,0,276)||!validBug(e.encounter.bug)))return false;}
@@ -378,14 +386,14 @@ export function validateSave(s){
    }
   }
   if(!s.discoveries.every(sp=>Object.hasOwn(SPECIES,sp))||s.log.some(l=>!l||!finite(l.day,1,s.day)||typeof l.text!=='string'||l.text.length>500)||s.log.length>40)return false;
-  if(Object.entries(s.records).some(([k,v])=>!Object.keys(SPECIES).flatMap(sp=>[sp+'-male',sp+'-female']).includes(k)||!finite(v,0,100)))return false;
+  if(Object.entries(s.records).some(([k,v])=>!Object.keys(SPECIES).flatMap(sp=>[sp+'-male',sp+'-female']).includes(k)||!finite(v,0,200)))return false;
   if(s.fight){const f=s.fight;if(s.version>=3){
    if(f.model!==3||!ids.has(f.bugId)||!validBug(f.rival)||!finite(f.elapsed,0,36)||!Number.isInteger(f.elapsed)||!finite(f.position,-100,100)||!finite(f.playerStamina,0,120)||!finite(f.opponentStamina,0,120)||typeof f.finished!=='boolean'||!Array.isArray(f.events)||f.events.length>10||f.events.some(e=>!finite(e.step,1,36)||typeof e.playerActs!=='boolean'||typeof e.text!=='string'))return false;
-  }else{const moves=['push','lift','guard'];if(!ids.has(f.bugId)||!f.rival||!Object.hasOwn(SPECIES,f.rival.species)||!finite(f.rival.length,1,100)||!finite(f.rival.health,0,100)||!finite(f.rival.hunger,0,100)||typeof f.rival.name!=='string'||!finite(f.player,0,2)||!finite(f.opponent,0,2)||!Array.isArray(f.rounds)||f.rounds.length>3||f.rounds.some(r=>!moves.includes(r.move)||!moves.includes(r.rivalMove)||typeof r.won!=='boolean')||typeof f.finished!=='boolean'||f.player+f.opponent!==f.rounds.length||f.finished!==(f.player===2||f.opponent===2))return false;}}
-  const validBrood=(b,historical=false)=>{ if(!b||b.growthPlan!==undefined&&!validGrowthPlan(b.species,b.growthPlan)||s.version>=2&&!compatibleFood(PRODUCTS[b.medium],b.species)||typeof b.id!=='string'||!Object.hasOwn(SPECIES,b.species)||!validLineage(s,b.lineage,b.species)||!finite(b.started,1,s.day)||!finite(b.age,0,s.version===1?7:s.version<4?14:broodGrowthDays(b)-1e-9)||s.version<4&&!Number.isInteger(b.age)||s.version>=4&&(!['fast','natural'].includes(b.growthMode)||!historical&&b.growthMode!==(s.settings.realGrowth?'natural':'fast'))||!finite(b.food,0,100)||['foodSum','nutritionSum','fungusSum'].some(k=>b[k]!==undefined&&!finite(b[k],0,18))||!finite(b.qualitySum,0,s.version===1?4:s.version<4?12:18)||!finite(b.qualityDays,0,s.version===1?4:s.version<4?10:15)||s.version<4&&!Number.isInteger(b.qualityDays)||!Array.isArray(b.parents)||b.parents.length!==2||!b.parents.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&p.name.length<=60&&finite(p.length,1,100)&&p.species===b.species&&validTraits(p.species,p.traits)&&validLineage(s,p.lineage,p.species)&&['male','female'].includes(p.sex))||!Array.isArray(b.children)||b.children.length!==3||!b.children.every(c=>['male','female'].includes(c.sex)&&finite(c.genetic,0,1)&&validTraits(b.species,c.traits)))return false;return true;};
+  }else{const moves=['push','lift','guard'];if(!ids.has(f.bugId)||!f.rival||!Object.hasOwn(SPECIES,f.rival.species)||!finite(f.rival.length,1,200)||!finite(f.rival.health,0,100)||!finite(f.rival.hunger,0,100)||typeof f.rival.name!=='string'||!finite(f.player,0,2)||!finite(f.opponent,0,2)||!Array.isArray(f.rounds)||f.rounds.length>3||f.rounds.some(r=>!moves.includes(r.move)||!moves.includes(r.rivalMove)||typeof r.won!=='boolean')||typeof f.finished!=='boolean'||f.player+f.opponent!==f.rounds.length||f.finished!==(f.player===2||f.opponent===2))return false;}}
+  const validBrood=(b,historical=false)=>{ if(!b||b.growthPlan!==undefined&&!validGrowthPlan(b.species,b.growthPlan)||s.version>=2&&!compatibleFood(PRODUCTS[b.medium],b.species)||typeof b.id!=='string'||!Object.hasOwn(SPECIES,b.species)||!validLineage(s,b.lineage,b.species)||!finite(b.started,1,s.day)||!finite(b.age,0,s.version===1?7:s.version<4?14:broodGrowthDays(b)-1e-9)||s.version<4&&!Number.isInteger(b.age)||s.version>=4&&(!['fast','natural'].includes(b.growthMode)||!historical&&b.growthMode!==(s.settings.realGrowth?'natural':'fast'))||!finite(b.food,0,100)||['foodSum','nutritionSum','fungusSum'].some(k=>b[k]!==undefined&&!finite(b[k],0,18))||!finite(b.qualitySum,0,s.version===1?4:s.version<4?12:18)||!finite(b.qualityDays,0,s.version===1?4:s.version<4?10:15)||s.version<4&&!Number.isInteger(b.qualityDays)||!Array.isArray(b.parents)||b.parents.length!==2||!b.parents.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&p.name.length<=60&&finite(p.length,1,200)&&p.species===b.species&&validTraits(p.species,p.traits)&&validLineage(s,p.lineage,p.species)&&['male','female'].includes(p.sex))||!Array.isArray(b.children)||b.children.length!==3||!b.children.every(c=>['male','female'].includes(c.sex)&&finite(c.genetic,0,1)&&validTraits(b.species,c.traits)))return false;return true;};
   const broodIds=new Set();
   if(!s.broods.every(b=>validBrood(b)&&!broodIds.has(b.id)&&(broodIds.add(b.id),true)))return false;
-  return validAuctions(s,{validBug,validBrood});
+  return validOverseas(s,validBug)&&validAuctions(s,{validBug,validBrood});
 }
 export function release(state,id){
   const b=bugOf(state,id);if(state.fight?.bugId===id)throw new Error('투곤에 참가 중인 개체는 놓아줄 수 없어요.');

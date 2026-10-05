@@ -1,3 +1,7 @@
+import {FOREIGN_SPECIES} from './foreign-species.js';
+const overseasBounds={sumatra_flat:[240,450],metallifer:[180,300],atlas:[300,510],caucasus:[390,660],giraffe:[270,480],antaeus:[300,570],grandis:[300,600],borneo_flat:[240,450],moellenkampi:[330,570],rainbow:[240,450],golden:[180,330],hercules:[570,810],actaeon:[720,1095],palawan:[270,480],formosan:[390,720],sika:[240,450],japan_stag:[390,780],japan_saw:[260,450],elephas:[480,810],neptune:[600,960],tarandus:[240,420],regius:[240,450]};
+// Indoor game estimates except the referenced measured cycles; see overseas-ko.md.
+const overseasProfiles=Object.fromEntries(Object.keys(FOREIGN_SPECIES).map(sp=>{const [min,max]=overseasBounds[sp],total=Math.round((min+max)/2);return [sp,{min,max,stages:[21,28,42,total-126,35]}];}));
 export const DAY_MS=24*60*60*1000;
 export const KST_OFFSET=9*60*60*1000;
 export function calendarDay(now){return Math.floor((now+KST_OFFSET)/DAY_MS);}
@@ -15,6 +19,7 @@ export const LEGACY_NATURAL_DURATIONS={
  saw:[25,25,40,210,25],
  little:[25,25,40,185,25],
  stag:[25,30,60,335,30],
+ ...Object.fromEntries(Object.entries(overseasProfiles).map(([sp,p])=>[sp,p.stages])),
 };
 // Sources and the distinction between observations and game estimates are in
 // docs/growth-timing-ko.md. Bounds are game ranges, not biological guarantees.
@@ -28,6 +33,7 @@ export const GROWTH_PROFILES={
  saw:{stages:[25,30,45,195,45],min:260,max:450},
  little:{stages:[20,25,40,175,30],min:210,max:390},
  stag:{stages:[30,40,65,405,30],min:390,max:780},
+ ...overseasProfiles,
 };
 export const NATURAL_DURATIONS=Object.fromEntries(Object.entries(GROWTH_PROFILES).map(([sp,p])=>[sp,p.stages]));
 const sum=values=>values.reduce((a,b)=>a+b,0);

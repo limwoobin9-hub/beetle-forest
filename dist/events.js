@@ -72,7 +72,7 @@ export function syncDailyEvents(state,now=Date.now(),environment={}){
   let pool=EVENT_TEMPLATES.filter(t=>t.tone===tone&&eligible(state,t,env)&&!recent.has(t.id));
   if(!pool.length)pool=EVENT_TEMPLATES.filter(t=>t.tone===tone&&eligible(state,t,env));
   const t=pick(pool,rng,env);
-  const owned=[...state.bugs,...state.broods].map(b=>b.species),species=t.tone==='bad'&&t.requires==='insects'&&owned.length?owned:t.requires==='brood'&&state.broods.length?state.broods.map(b=>b.species):Object.keys(SPECIES);
+  const owned=[...state.bugs,...state.broods].map(b=>b.species),species=t.tone==='bad'&&t.requires==='insects'&&owned.length?owned:t.requires==='brood'&&state.broods.length?state.broods.map(b=>b.species):Object.keys(SPECIES).filter(sp=>!SPECIES[sp].foreign);
   const sp=species[Math.floor(rng()*species.length)],seed=Math.floor(rng()*4294967295);
   data.cases.push({id:day+'-mission-'+seed,key:t.id+':'+sp,dayKey:day,seed,createdAt:now,startedAt:0,deadlineAt:0,step:0,stepStartedAt:0,waitUntil:0,stage:'new',reward:t.reward+keeperLevel(state)*25,guest:t.guest,rareGuest:t.rareGuest,guestTaken:false,targetIds:[],context:env,legacy:false});
   data.dayKey=day;changed=true;

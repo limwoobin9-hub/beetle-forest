@@ -14,7 +14,7 @@ function encounter(s){startExpedition(s,'oak',random);const i=s.expedition.spots
 
 test('new game has no insects, names, discoveries, or default size records',()=>{
  const s=newGame();assert.deepEqual(s.bugs,[]);assert.deepEqual(s.discoveries,[]);assert.deepEqual(s.records,{});assert.deepEqual(s.log,[]);assert.equal(keeperLevel(s),1);valid(s);
- assert.equal(SHOP_AREAS.length,5);assert.equal(Object.keys(PRODUCTS).length,26);
+ assert.equal(SHOP_AREAS.length,7);assert.equal(Object.keys(PRODUCTS).length,40);
 });
 test('shop district locks protect purchases and open at keeper levels',()=>{
  const s=newGame(),before=structuredClone(s);
@@ -49,11 +49,11 @@ test('jelly and bedding use the selected product and grant daily care XP once',(
 });
 test('all species pass through egg, three instars, pupa and adult',()=>{
  for(const species of Object.keys(SPECIES)){
-  const s=newGame(),[m,f]=parents(s,species);s.inventory.basic_mat=40;
-  const b=breed(s,m.id,f.id,random);assert.equal(broodStage(b),'알');valid(s);
+  const s=newGame(),[m,f]=parents(s,species);s.inventory.basic_mat=40;const medium=['tarandus','regius'].includes(species)?'kawara_spawn':'basic_mat';s.inventory[medium]=40;
+  const b=breed(s,m.id,f.id,random,medium);assert.equal(broodStage(b),'알');valid(s);
   const seen=new Set(['알']);
   for(let day=1;day<=15;day++){
-   if(['1령','2령','3령'].includes(broodStage(b))&&b.food<100)careBrood(s,b.id,'basic_mat');
+   if(['1령','2령','3령'].includes(broodStage(b))&&b.food<100)careBrood(s,b.id,medium);
    advanceDay(s);if(s.broods.length)seen.add(broodStage(b));valid(s);
   }
   const offspring=s.bugs.filter(child=>child.parents);
@@ -82,7 +82,7 @@ test('breeding reserves room for an in-progress capture',()=>{
  const mat=s.inventory.basic_mat;assert.throws(()=>breed(s,m.id,f.id,random),/공간/);assert.equal(s.inventory.basic_mat,mat);valid(s);
 });
 test('automatic fight persists contacts and respects daily entry without move inputs',()=>{
- const s=newGame(),[m]=parents(s,'king',.95);const fight=makeOpponent(s,m.id,random);valid(s);
+ const s=newGame(),[m]=parents(s,'king',.95);const fight=makeOpponent(s,m.id,random);fight.rival.health=60;fight.rival.hunger=40;valid(s);
  assert.throws(()=>advanceDay(s),/투곤/);assert.throws(()=>care(s,m.id,'jelly'),/경기/);
  while(!fight.finished){advanceFight(s,random);valid(s);}
  assert.equal(fight.won,true);assert.equal(m.wins,1);assert.equal(s.xp,20);assert.ok(fight.elapsed<=36);
@@ -172,7 +172,7 @@ test('real time follows Korean midnight, catches up after reload, and never repe
 test('natural schedules take months and every species persists until its emergence day',()=>{
  const now=1800000000000;
  for(const species of Object.keys(SPECIES)){
-  const s=newGame(now),[m,f]=parents(s,species);setTimeOptions(s,{realTime:true,realGrowth:true},now);const brood=breed(s,m.id,f.id,random),days=broodGrowthDays(brood);
+  const s=newGame(now),[m,f]=parents(s,species);setTimeOptions(s,{realTime:true,realGrowth:true},now);const medium=['tarandus','regius'].includes(species)?'kawara_spawn':'basic_mat';s.inventory[medium]=4;const brood=breed(s,m.id,f.id,random,medium),days=broodGrowthDays(brood);
   assert.ok(days>=GROWTH_PROFILES[species].min&&days<=GROWTH_PROFILES[species].max);assert.equal(syncRealTime(s,now+8*DAY_MS).days,8);assert.equal(s.broods.length,1);assert.equal(s.totalEmergences,0);valid(s);
   syncRealTime(s,now+(days-1)*DAY_MS);assert.equal(s.broods.length,1);assert.equal(broodStage(brood),'번데기');valid(s);
   syncRealTime(s,now+days*DAY_MS);assert.equal(s.broods.length,0);assert.equal(s.totalEmergences,1);assert.equal(s.bugs.length,3);assert.equal(s.memorials.length,2);valid(s);

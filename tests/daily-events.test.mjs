@@ -1,3 +1,4 @@
+import {SPECIES} from '../dist/world.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {newGame,createBug,breed,advanceDay,releaseMany,collectDailyGuest,finishDailyMission,validateSave,migrateSave} from '../dist/engine.js';
@@ -11,7 +12,7 @@ function complete(s,e,start=now){beginDailyEvent(s,e.id,start);while(e.stage==='
 const possessions=s=>structuredClone({bugs:s.bugs,broods:s.broods,inventory:s.inventory,coins:s.coins,records:s.records,memorials:s.memorials});
 
 test('200 concrete stories include equal good/problem counts, 1800 species combinations and one to three waits',()=>{
- assert.equal(EVENT_TEMPLATES.length,200);assert.equal(EVENT_CATALOG.length,1800);assert.equal(new Set(EVENT_CATALOG.map(t=>t.key)).size,1800);assert.equal(new Set(EVENT_TEMPLATES.map(t=>t.title)).size,200);
+ assert.equal(EVENT_TEMPLATES.length,200);assert.equal(EVENT_CATALOG.length,EVENT_TEMPLATES.length*Object.keys(SPECIES).length);assert.equal(new Set(EVENT_CATALOG.map(t=>t.key)).size,EVENT_TEMPLATES.length*Object.keys(SPECIES).length);assert.equal(new Set(EVENT_TEMPLATES.map(t=>t.title)).size,200);
  for(const family of Object.keys(EVENT_FAMILIES))assert.equal(EVENT_TEMPLATES.filter(t=>t.family===family).length,20);
  assert.equal(EVENT_TEMPLATES.filter(t=>t.tone==='good').length,100);assert.equal(EVENT_TEMPLATES.filter(t=>t.tone==='bad').length,100);
  assert.deepEqual([...new Set(EVENT_TEMPLATES.map(t=>t.steps.length))].sort(),[1,2,3]);

@@ -1,3 +1,4 @@
+import {canSellLive,requireLiveSale} from './career.js';
 import {SPECIES,sizeRange} from './world.js';
 import {isLarva} from './catalog.js';
 import {stageName} from './time.js';
@@ -14,8 +15,8 @@ export const activeAuctionFor=(s,kind,id)=>(s.auctions||[]).find(a=>a.status==='
 export const auctionBug=a=>a.kind==='specimen'?a.asset.bug:a.kind==='adult'?a.asset:null;
 export const bidStep=price=>price<100?5:price<500?10:price<1500?25:50;
 export function sizeScore(b){const [lo,hi]=sizeRange(b.species,b.sex,true);return cap((b.length-lo)/(hi-lo));}
-export function marketValue(kind,asset){
- const b=kind==='specimen'?asset.bug:asset,sp=b.species,base={king:80,flat:65,rhino:50,redleg:100,dauria:150,twospot:190,saw:60,little:45,stag:95}[sp];
+export function marketValue(kind,asset,state=null){
+ const b=kind==='specimen'?asset.bug:asset,sp=b.species,base={king:80,flat:65,rhino:50,redleg:100,dauria:150,twospot:190,saw:60,little:45,stag:95}[sp]||SPECIES[sp].marketBase;
  const factors=[],rare=SPECIES[sp].rarity;let score,traitPower,value;
  if(kind==='larva'){
   score=asset.parents.reduce((n,p)=>n+sizeScore(p),0)/2;
@@ -35,6 +36,7 @@ export function marketValue(kind,asset){
   if(kind==='adult'&&b.health<60)factors.push('컨디션에 따른 감가');
   if(kind==='specimen')factors.push('제작 완료·라벨 부착 표본');
  }
+ if(kind==='specimen'&&state?.inventory.specimen_table){value*=1.15;factors.push('표본 검사·촬영대 감정 +15%');}
  if(rare)factors.push('희귀종 수집 수요');
  if(score<.25&&!traitPower)factors.push('소형 기본형 · 낮은 수요·유찰 가능');
  else if(score>.80)factors.push(kind==='larva'?'대형 부모세대':'동종 대형 개체');
@@ -43,15 +45,16 @@ export function marketValue(kind,asset){
  return {value,demand,low:Math.max(1,Math.floor(value*.55)),high:Math.ceil(value*1.5),suggested:Math.max(1,Math.floor(value*.4)),factors};
 }
 export function auctionCandidates(state,kind){
- if(kind==='adult')return state.bugs.filter(b=>state.fight?.bugId!==b.id||state.fight.finished);
- if(kind==='larva')return state.broods.filter(b=>isLarva(stageName(b)));
+ if(kind==='adult')return state.bugs.filter(b=>canSellLive(state,b.species)&&(state.fight?.bugId!==b.id||state.fight.finished));
+ if(kind==='larva')return state.broods.filter(b=>canSellLive(state,b.species)&&isLarva(stageName(b)));
  if(kind==='specimen')return state.memorials.filter(m=>m.status==='mounted'&&!activeAuctionFor(state,kind,m.id));
  return [];
 }
 export function auctionPreview(state,kind,id){
  if(!Object.hasOwn(AUCTION_KINDS,kind))throw new Error('출품 종류를 선택해 주세요.');
+ const owned=kind==='adult'?state.bugs.find(b=>b.id===id):kind==='larva'?state.broods.find(b=>b.id===id):null;if(owned)requireLiveSale(state,owned.species);
  const asset=auctionCandidates(state,kind).find(a=>a.id===id);if(!asset)throw new Error('출품 가능한 개체를 선택해 주세요.');
- return {kind,asset,market:marketValue(kind,asset)};
+ return {kind,asset,market:marketValue(kind,asset,state)};
 }
 function note(s,text){s.log.unshift({day:s.day,text});s.log=s.log.slice(0,40);}
 function historyLimit(s){const active=s.auctions.filter(a=>a.status==='active'),closed=s.auctions.filter(a=>a.status!=='active').slice(-80);s.auctions=[...active,...closed].sort((a,b)=>a.started-b.started);}
@@ -147,3 +150,4 @@ export function validAuctions(state,{validBug,validBrood}){
  }
  return active<=MAX_ACTIVE_AUCTIONS&&state.bugs.length+state.broods.length*3+auctionReserved(state)<=48&&state.broods.length+auctionNurseries(state)<=3;
 }
+
