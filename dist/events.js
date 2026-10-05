@@ -29,6 +29,7 @@ export function eventChoices(e,phase='first'){
 export function syncDailyEvents(state,now=Date.now()){
  clock(now);const data=dataOf(state),day=calendarDay(now);let changed=false;
  for(const e of data.cases){
+  for(const field of ['retryAt','trialAt'])if(e[field]>0&&e[field]<=now){e[field]=0;changed=true;}
   if(!['complete','claimed','expired','new'].includes(e.stage)&&e.deadlineAt<=now){e.stage='expired';changed=true;}
   else if(e.stage==='waiting'&&e.waitUntil<=now){e.stage='ready';changed=true;}
   else if(e.stage==='final-wait'&&e.waitUntil<=now){e.stage='complete';changed=true;}

@@ -48,6 +48,22 @@ test('late-night starts retain a full 24-hour deadline while three new cases arr
  const count=s.dailyEvents.cases.length;syncDailyEvents(s,late);syncDailyEvents(s,midnight);assert.equal(s.dailyEvents.cases.length,count);assert.equal(validateSave(s),true);
 });
 
+test('retry and sample preparation timers trigger an automatic refresh exactly when their interval ends',()=>{
+ const s=setup(),e=s.dailyEvents.cases[0];beginDailyEvent(s,e.id,now);
+ chooseDailyEvent(s,e.id,'first',(eventChoices(e).answer+1)%4,now);
+ assert.equal(syncDailyEvents(s,now+EVENT_RETRY-1),false);
+ assert.equal(syncDailyEvents(s,now+EVENT_RETRY),true);assert.equal(e.retryAt,0);
+ assert.equal(syncDailyEvents(s,now+EVENT_RETRY+1),false);
+ chooseDailyEvent(s,e.id,'first',eventChoices(e).answer,now+EVENT_RETRY);
+ const trialState=setup(),trial=trialState.dailyEvents.cases[2];trial.goal=2;
+ beginDailyEvent(trialState,trial.id,now);chooseDailyEvent(trialState,trial.id,'first',eventChoices(trial).answer,now);
+ runEventTrial(trialState,trial.id,eventChoices(trial,'trial').answer,now);
+ assert.equal(syncDailyEvents(trialState,now+EVENT_RETRY-1),false);
+ assert.equal(syncDailyEvents(trialState,now+EVENT_RETRY),true);assert.equal(trial.trialAt,0);
+ runEventTrial(trialState,trial.id,eventChoices(trial,'trial').answer,now+EVENT_RETRY);
+ assert.equal(eventProgress(trialState,trial),2);assert.equal(validateSave(trialState),true);
+});
+
 test('expiry changes only event status while completed unclaimed rewards remain available',()=>{
  const s=setup(),[a,b]=s.dailyEvents.cases;const end=complete(s,a);beginDailyEvent(s,b.id,end);const before=possessions(s);
  syncDailyEvents(s,end+EVENT_DAY);assert.equal(b.stage,'expired');assert.equal(a.stage,'complete');assert.deepEqual(possessions(s),before);
