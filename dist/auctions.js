@@ -16,19 +16,20 @@ export const auctionBug=a=>a.kind==='specimen'?a.asset.bug:a.kind==='adult'?a.as
 export const bidStep=price=>price<100?5:price<500?10:price<1500?25:50;
 export function sizeScore(b){const [lo,hi]=sizeRange(b.species,b.sex,true);return cap((b.length-lo)/(hi-lo));}
 export function marketValue(kind,asset,state=null){
- const b=kind==='specimen'?asset.bug:asset,sp=b.species,base={king:80,flat:65,rhino:50,redleg:100,dauria:150,twospot:190,saw:60,little:45,stag:95}[sp]||SPECIES[sp].marketBase;
+ const b=kind==='specimen'?asset.bug:asset,sp=b.species,base={king:80,flat:65,rhino:50,redleg:100,dauria:150,twospot:700,saw:60,little:45,stag:95}[sp]||SPECIES[sp].marketBase;
+ const protectedStock=sp==='twospot',priceBase=protectedStock?base:base*2.5;
  const factors=[],rare=SPECIES[sp].rarity;let score,traitPower,value;
  if(kind==='larva'){
   score=asset.parents.reduce((n,p)=>n+sizeScore(p),0)/2;
   const inherited=inheritanceChances(sp,asset.parents);
   traitPower=inherited.reduce((n,t)=>n+(traitPremium(t.id)-1)*t.chance,0);
   const stage=stageName(asset),stageWeight={'1령':.72,'2령':.86,'3령':1}[stage]||.72;
-  value=base*(.10+5.8*Math.pow(score,3.2))*(1+traitPower)*3*.55*stageWeight*(.65+.35*asset.food/100);
+  value=(protectedStock?2400+priceBase*5.8*Math.pow(score,3.2):priceBase*(.10+5.8*Math.pow(score,3.2)))*(1+traitPower)*3*.55*stageWeight*(.65+.35*asset.food/100);
   factors.push(`부모 ♂ ${asset.parents[0].length.toFixed(1)} / ♀ ${asset.parents[1].length.toFixed(1)} mm`,`${stage} · 3마리 묶음`);
   for(const t of inherited)factors.push(`${t.name} · ${traitRarity(t.id).name} · 유전 기대 ${traitRateText(t.chance)}`);
  }else{
   score=sizeScore(b);traitPower=traitMarketBonus(b.traits);
-  value=base*(.10+6*Math.pow(score,3.4))*(1+traitPower);
+  value=(protectedStock?2400+priceBase*6*Math.pow(score,3.4):priceBase*(.10+6*Math.pow(score,3.4)))*(1+traitPower);
   if(kind==='adult')value*=.42+.58*b.health/100;
   if(kind==='specimen')value*=1.08+(asset.work?.label?.collector?.trim() ? .15 : 0);
   factors.push(`${b.sex==='male'?'수컷':'암컷'} ${b.length.toFixed(1)} mm · 동종·동성별 크기 기준`);
@@ -38,11 +39,12 @@ export function marketValue(kind,asset,state=null){
  }
  if(kind==='specimen'&&state?.inventory.specimen_table){value*=1.15;factors.push('표본 검사·촬영대 감정 +15%');}
  if(rare)factors.push('희귀종 수집 수요');
- if(score<.25&&!traitPower)factors.push('소형 기본형 · 낮은 수요·유찰 가능');
+ if(protectedStock)factors.push('보호종 수집 프리미엄 · 소형도 높은 기본 가치');
+ if(score<.25&&!traitPower&&!protectedStock)factors.push('소형 기본형 · 낮은 수요·유찰 가능');
  else if(score>.80)factors.push(kind==='larva'?'대형 부모세대':'동종 대형 개체');
- const demand=cap(.025+.78*score*score+Math.min(.45,.12*Math.log2(1+traitPower))+rare*.025,.015,.96);
+ const demand=cap((protectedStock?.70:.025)+(protectedStock?.23:.78)*score*score+Math.min(.45,.12*Math.log2(1+traitPower))+rare*.025,.015,.96);
  value=Math.max(5,Math.round(value));
- return {value,demand,low:Math.max(1,Math.floor(value*.55)),high:Math.ceil(value*1.5),suggested:Math.max(1,Math.floor(value*.4)),factors};
+ return {value,demand,low:Math.max(1,Math.floor(value*.55)),high:Math.ceil(value*1.5),suggested:Math.max(1,Math.floor(value*(protectedStock?.7:.4))),factors};
 }
 export function auctionCandidates(state,kind){
  if(kind==='adult')return state.bugs.filter(b=>canSellLive(state,b.species)&&(state.fight?.bugId!==b.id||state.fight.finished));
@@ -131,12 +133,12 @@ export function validAuctions(state,{validBug,validBrood}){
  if(!Array.isArray(state.auctions)||state.auctions.length>88)return false;
  const ids=new Set(),locked=new Set();let active=0;
  for(const a of state.auctions){
-  if(!a||typeof a.id!=='string'||!a.id||a.id.length>128||ids.has(a.id)||a.version!==1||!Object.hasOwn(AUCTION_KINDS,a.kind)||!a.asset||typeof a.asset.id!=='string'||!Number.isSafeInteger(a.started)||a.started<0||!Number.isSafeInteger(a.ends)||a.ends-a.started<MINUTE||a.ends-a.started>MAX_AUCTION_MINUTES*MINUTE||(a.ends-a.started)%MINUTE||!Number.isInteger(a.startPrice)||a.startPrice<1||a.startPrice>1000000||!['active','sold','unsold','cancelled'].includes(a.status)||!Number.isInteger(a.cursor)||a.cursor<0||a.cursor>BIDDERS.length||!Array.isArray(a.offers)||a.offers.length>BIDDERS.length||!Array.isArray(a.bids)||a.bids.length!==a.offers.length||!a.market||!Number.isInteger(a.market.value)||a.market.value<1||a.market.value>100000||!Number.isFinite(a.market.demand)||a.market.demand<0||a.market.demand>1||!['low','high','suggested'].every(k=>Number.isInteger(a.market[k])&&a.market[k]>=1&&a.market[k]<=100000)||!Array.isArray(a.market.factors)||a.market.factors.length>8||a.market.factors.some(f=>typeof f!=='string'||f.length>120))return false;
+  if(!a||typeof a.id!=='string'||!a.id||a.id.length>128||ids.has(a.id)||a.version!==1||!Object.hasOwn(AUCTION_KINDS,a.kind)||!a.asset||typeof a.asset.id!=='string'||!Number.isSafeInteger(a.started)||a.started<0||!Number.isSafeInteger(a.ends)||a.ends-a.started<MINUTE||a.ends-a.started>MAX_AUCTION_MINUTES*MINUTE||(a.ends-a.started)%MINUTE||!Number.isInteger(a.startPrice)||a.startPrice<1||a.startPrice>1000000||!['active','sold','unsold','cancelled'].includes(a.status)||!Number.isInteger(a.cursor)||a.cursor<0||a.cursor>BIDDERS.length||!Array.isArray(a.offers)||a.offers.length>BIDDERS.length||!Array.isArray(a.bids)||a.bids.length!==a.offers.length||!a.market||!Number.isInteger(a.market.value)||a.market.value<1||a.market.value>1000000||!Number.isFinite(a.market.demand)||a.market.demand<0||a.market.demand>1||!['low','high','suggested'].every(k=>Number.isInteger(a.market[k])&&a.market[k]>=1&&a.market[k]<=1500000)||!Array.isArray(a.market.factors)||a.market.factors.length>8||a.market.factors.some(f=>typeof f!=='string'||f.length>120))return false;
   ids.add(a.id);
   if(a.kind==='adult'&&!validBug(a.asset)||a.kind==='larva'&&(!validBrood(a.asset,a.status!=='active')||!isLarva(stageName(a.asset)))||a.kind==='specimen'&&(!validBug(a.asset.bug)||a.asset.id!==a.asset.bug.id||a.asset.status!=='mounted'||!validSpecimenWork(a.asset.work)||a.asset.work.phase!=='done'||typeof a.asset.caption!=='string'||a.asset.caption.length>80))return false;
   const plan=marketPlan(a),seen=new Set();let previous=0,lastTime=a.started;
   for(let i=0;i<a.offers.length;i++){
-   const o=a.offers[i],b=a.bids[i];if(!o||!b||!Number.isInteger(o.bidder)||o.bidder<0||o.bidder>=BIDDERS.length||seen.has(o.bidder)||!Number.isInteger(o.limit)||o.limit<a.startPrice||o.limit>200000||!plan.slice(0,a.cursor).some(p=>p.bidder===o.bidder&&p.limit===o.limit&&p.at===o.at)||!Number.isInteger(b.amount)||b.amount<a.startPrice||i>0&&b.amount<=previous||b.amount>Math.max(...a.offers.slice(0,i+1).map(x=>x.limit))||b.at!==o.at||b.at<lastTime||b.at>=a.ends||b.challenger!==o.bidder||!a.offers.slice(0,i+1).some(x=>x.bidder===b.bidder))return false;
+   const o=a.offers[i],b=a.bids[i];if(!o||!b||!Number.isInteger(o.bidder)||o.bidder<0||o.bidder>=BIDDERS.length||seen.has(o.bidder)||!Number.isInteger(o.limit)||o.limit<a.startPrice||o.limit>2000000||!plan.slice(0,a.cursor).some(p=>p.bidder===o.bidder&&p.limit===o.limit&&p.at===o.at)||!Number.isInteger(b.amount)||b.amount<a.startPrice||i>0&&b.amount<=previous||b.amount>Math.max(...a.offers.slice(0,i+1).map(x=>x.limit))||b.at!==o.at||b.at<lastTime||b.at>=a.ends||b.challenger!==o.bidder||!a.offers.slice(0,i+1).some(x=>x.bidder===b.bidder))return false;
    seen.add(o.bidder);previous=b.amount;lastTime=b.at;
   }
   if(['sold','unsold'].includes(a.status)&&a.cursor!==plan.length)return false;

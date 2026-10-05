@@ -44,11 +44,11 @@ test('new midnight clock grants one day at a month boundary and does not duplica
 });
 test('well-maintained substrate produces mostly 70mm-class flat males and rare 80mm males',()=>{
  const bugs=Array.from({length:120},(_,i)=>raised(i+17)).flat(),males=bugs.filter(b=>b.sex==='male'),females=bugs.filter(b=>b.sex==='female');
- assert.ok(males.length>100);assert.ok(males.every(b=>b.length>=70&&b.length<=82));assert.ok(males.some(b=>b.length>=80));assert.ok(males.filter(b=>b.length>=80).length/males.length<.15);assert.ok(females.every(b=>b.length>=34));
+ assert.ok(males.length>100);assert.ok(males.every(b=>b.length>=70&&b.length<=90));assert.ok(males.some(b=>b.length>=80));assert.ok(males.filter(b=>b.length>=80).length/males.length<.15);assert.ok(females.every(b=>b.length>=34));
 });
 test('premium substrate occasionally produces 80mm males while food neglect reduces growth',()=>{
  const premium=Array.from({length:120},(_,i)=>raised(i+17,'stag_master')).flat().filter(b=>b.sex==='male');
- assert.ok(premium.some(b=>b.length>=80));assert.ok(premium.some(b=>b.length<80));assert.ok(premium.every(b=>b.length<=82));
+ assert.ok(premium.some(b=>b.length>=80));assert.ok(premium.some(b=>b.length<80));assert.ok(premium.every(b=>b.length<=90));
  const ordinary=raised(17),neglected=raised(17,'basic_mat',true);assert.ok(ordinary.every((b,i)=>b.length>neglected[i].length));
 });
 test('actual parental measurements affect offspring even for identical genetic values',()=>{
@@ -60,10 +60,11 @@ test('actual parental measurements affect offspring even for identical genetic v
 test('king males require actual fungal feeding for large growth, including when premium mat has equal nutrition',()=>{
  const mat=Array.from({length:120},(_,i)=>raised(i+17,'stag_master',false,'king')).flat().filter(b=>b.sex==='male');
  const fungus=Array.from({length:120},(_,i)=>raised(i+17,'oohira_1400',false,'king')).flat().filter(b=>b.sex==='male');
- assert.ok(mat.every(b=>b.length<70));assert.ok(fungus.some(b=>b.length>=80));assert.ok(fungus.every(b=>b.length>=70&&b.length<=86));
+ assert.ok(mat.every(b=>b.length<75));assert.ok(fungus.some(b=>b.length>=80));assert.ok(fungus.every(b=>b.length>=70&&b.length<=94.1));
 });
 test('a last-minute fungus switch cannot receive the full fungal growth bonus',()=>{
  const parents=[{sex:'male',length:64,genetic:.8},{sex:'female',length:34,genetic:.4}];
  const size=fungus=>createBug('king','male',.71,1,'번식',parents,1.12,{care:1,nutrition:1.12,fungus}).length;
- assert.ok(size(.05)<size(1));assert.ok(size(0)<70);assert.ok(size(1)>=80);
+ assert.ok(size(.05)<size(1));assert.ok(size(0)<75);assert.ok(size(1)>=80);
 });
+

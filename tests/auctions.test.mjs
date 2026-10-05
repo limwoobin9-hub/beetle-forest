@@ -17,7 +17,7 @@ test('all species and both sexes value large and rare individuals above small ba
  const traits={king:'king_white_eye',flat:'flat_long',rhino:'rhino_red',redleg:'redleg_crimson',dauria:'dauria_amber',twospot:'twospot_gold',saw:'saw_red',little:'little_white_eye',stag:'stag_gold'};
  for(const species of Object.keys(SPECIES))for(const sex of ['male','female']){
   const small=bug(species,sex),large=bug(species,sex),rare=bug(species,sex,[traits[species]||speciesTraits(species)[0].id]);const range=sex==='male'?SPECIES[species].bredMale:SPECIES[species].bredFemale;small.length=range[0];large.length=range[1];rare.length=large.length;
-  const a=marketValue('adult',small),b=marketValue('adult',large),c=marketValue('adult',rare);assert.ok(a.value<b.value&&b.value<c.value);assert.ok(a.demand<b.demand&&b.demand<=c.demand);assert.ok(a.value<(SPECIES[species].foreign?100:40));
+  const a=marketValue('adult',small),b=marketValue('adult',large),c=marketValue('adult',rare);assert.ok(a.value<b.value&&b.value<c.value);assert.ok(a.demand<b.demand&&b.demand<=c.demand);if(species==='twospot')assert.ok(a.value>=2300&&a.demand>=.7);else assert.ok(a.value<(SPECIES[species].foreign?250:40));
  }
 });
 test('large parental measurements and matching rare parents increase larval bundle value',()=>{
@@ -76,7 +76,7 @@ test('unaffordable starting prices yield no bids and return the exact adult auto
 });
 test('small basic specimens often attract no interest and sell cheaply when they do',()=>{
  const small=bug();small.length=30;const large=bug('flat','male',['flat_long']);large.length=82;let empty=0,sums=0,premiumVisitors=0;
- for(let i=0;i<200;i++){const common={id:`small-${i}`,started:NOW,ends:NOW+10*MINUTE,market:marketValue('adult',small)},premium={...common,id:`premium-${i}`,market:marketValue('adult',large)};const p=marketPlan(common);empty+=p.length===0;sums+=p.length;premiumVisitors+=marketPlan(premium).length;assert.ok(p.every(e=>e.limit<20));}
+ for(let i=0;i<200;i++){const common={id:`small-${i}`,started:NOW,ends:NOW+10*MINUTE,market:marketValue('adult',small)},premium={...common,id:`premium-${i}`,market:marketValue('adult',large)};const p=marketPlan(common);empty+=p.length===0;sums+=p.length;premiumVisitors+=marketPlan(premium).length;assert.ok(p.every(e=>e.limit<30));}
  assert.ok(empty>100);assert.ok(premiumVisitors>sums*8);
 });
 test('bids cannot be rerolled by reload or cancellation after a live bid',()=>{

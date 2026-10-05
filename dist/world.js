@@ -1,8 +1,8 @@
 import {FOREIGN_SPECIES} from './foreign-species.js';
 // Size bounds and encounter rates below are game settings, not record claims.
 export const SPECIES={
- king:{name:'왕사슴벌레',latin:'Dorcus hopei binodulosus',color:'#b3bfaa',male:[25,69],female:[25,44],bredMale:[25,86],bredFemale:[25,49],power:1.06,grip:1.08,rarity:0,preferred:['bark'],note:'검은 몸과 큰턱 안쪽 돌기. 주 채집지: 깊은 숲.'},
- flat:{name:'넓적사슴벌레',latin:'Dorcus titanus castanicolor',color:'#dda369',male:[30,74],female:[25,42],bredMale:[30,82],bredFemale:[25,46],power:1.08,grip:1.12,rarity:0,preferred:['sap'],note:'납작한 몸과 긴 큰턱. 주 채집지: 참나무 숲.'},
+ king:{name:'왕사슴벌레',latin:'Dorcus hopei binodulosus',color:'#b3bfaa',male:[25,76.1],female:[25,44],bredMale:[25,94.1],bredFemale:[25,56.7],power:1.06,grip:1.08,rarity:0,preferred:['bark'],note:'검은 몸과 큰턱 안쪽 돌기. 주 채집지: 깊은 숲.'},
+ flat:{name:'넓적사슴벌레',latin:'Dorcus titanus castanicolor',color:'#dda369',male:[30,74],female:[25,42],bredMale:[30,90],bredFemale:[25,46],power:1.08,grip:1.12,rarity:0,preferred:['sap'],note:'납작한 몸과 긴 큰턱. 주 채집지: 참나무 숲.'},
  rhino:{name:'장수풍뎅이',latin:'Trypoxylus dichotomus',color:'#aaba85',male:[40,78],female:[35,52],bredMale:[40,85],bredFemale:[35,56],power:1.12,grip:.98,rarity:0,preferred:['leaf','sap'],note:'수컷은 머리와 앞가슴에 뿔이 있습니다. 주 채집지: 마을 뒷산.'},
  redleg:{name:'홍다리사슴벌레',latin:'Dorcus rubrofemoratus',color:'#b97752',male:[18,38],female:[16,25],bredMale:[18,42],bredFemale:[16,28],power:.96,grip:1.04,rarity:1,preferred:['bark'],note:'붉은 다리와 짧은 큰턱. 게임 내 희귀종 · 주 채집지: 계곡 고목지대.'},
  dauria:{name:'다우리아사슴벌레',latin:'Prismognathus dauricus',color:'#ad8766',male:[16,31],female:[16,24],bredMale:[16,35],bredFemale:[16,26],power:.94,grip:.99,rarity:2,preferred:['bark','leaf'],note:'갈색 몸과 위로 들린 큰턱. 게임 내 희귀종 · 주 채집지: 고산 활엽수림.'},

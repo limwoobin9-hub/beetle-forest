@@ -21,7 +21,7 @@ test('all sixteen destinations need only money, including zero EXP and a complet
  const reachable=new Set();
  for(const [id,r] of Object.entries(OVERSEAS_REGIONS)){
   assert.equal(Object.values(r.chances).reduce((a,b)=>a+b,0),1);Object.keys(r.chances).forEach(sp=>{assert.ok(SPECIES[sp].foreign);reachable.add(sp);});
-  const s=newGame(NOW);s.energy=0;s.coins=r.cost;s.bugs=Array.from({length:48},()=>bug());const t=startForeignTrip(s,id,NOW);assert.equal(s.coins,0);assert.equal(s.xp,0);assert.equal(s.energy,0);assert.equal(t.phase,'outbound');assert.equal(s.career.qualifications.length,0);valid(s);
+  const s=newGame(NOW);s.energy=0;s.coins=r.cost;s.bugs=Array.from({length:48},()=>bug());const t=startForeignTrip(s,id,NOW);assert.equal(s.coins,0);assert.equal(s.xp,0);assert.equal(s.energy,0);assert.equal(t.phase,'field');assert.equal(t.waitUntil,NOW);assert.equal(s.career.qualifications.length,0);valid(s);
   const poor=newGame(NOW);poor.coins=r.cost-1;const before=structuredClone(poor);assert.throws(()=>startForeignTrip(poor,id,NOW),/여행비/);assert.deepEqual(poor,before);
  }
  assert.deepEqual([...reachable].sort(),Object.keys(SPECIES).filter(sp=>SPECIES[sp].foreign).sort());

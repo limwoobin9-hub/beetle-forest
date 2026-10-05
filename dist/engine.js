@@ -1,7 +1,7 @@
 import {newCareer,migrateCareer,recordCare,validCareer,syncLeague,leagueClass,LEAGUE_CLASSES,recordLeagueFight} from './career.js';
 import {syncForeignTrip,validOverseas} from './overseas.js';
 import {newDailyEvents,migrateDailyEvents,validDailyEvents,takeEventGuest,claimDailyEvent} from './events.js';
-import {PRODUCTS,LEVEL_XP,keeperLevel,compatibleFood,syncSupplies,shopAccess,isLarva,isAdultBedding,adultBeddingItems,adultBeddingCount,equipmentEffects} from './catalog.js';
+import {PRODUCTS,LEVEL_XP,keeperLevel,productName,compatibleFood,syncSupplies,shopAccess,isLarva,isAdultBedding,adultBeddingItems,adultBeddingCount,equipmentEffects} from './catalog.js';
 import {SPECIES,LOCATIONS,sizeRange,captureDifficulty} from './world.js';
 export {SPECIES,LOCATIONS,captureDifficulty};
 import {RESEARCH_REQUESTS,currentResearch} from './research.js';
@@ -75,7 +75,7 @@ export function care(state,id,kind,itemId){
   if(state.fight?.bugId===id&&!state.fight.finished)throw new Error('경기 종료 후 돌볼 수 있습니다.');
   if(!['jelly','clean'].includes(kind))throw new Error('알 수 없는 돌봄입니다.');
   const item=itemId||(kind==='clean'?adultBeddingItems(state)[0]?.[0]:available(state,'jelly'));const product=PRODUCTS[item];
-  if(kind==='clean'&&!isAdultBedding(product))throw new Error('성충 교체에는 참나무 사육매트 또는 코코넛 깔개매트가 필요합니다. 유충용 매트는 번식통에서 사용하세요.');
+  if(kind==='clean'&&!isAdultBedding(product))throw new Error('성충 교체에는 참나무 바닥재 또는 코코넛 바닥재가 필요합니다. 유충용 톱밥은 번식통에서 사용하세요.');
   if(kind==='jelly'&&product?.kind!=='jelly')throw new Error('사용할 젤리를 선택하세요.');
   if(kind==='jelly'){
     if(b.hunger>=100&&b.health>=100)throw new Error('포만감과 건강이 이미 100입니다.');
@@ -86,7 +86,7 @@ export function care(state,id,kind,itemId){
   }else throw new Error('알 수 없는 돌봄입니다.');
   if(b.health>CRITICAL_HEALTH)b.criticalDays=0;
   if(b['xp_'+kind]!==state.day){gainXP(state,5);b['xp_'+kind]=state.day;}
-  recordCare(state,b);note(state,`${b.name} · ${product.name} 사용`);return b;
+  recordCare(state,b);note(state,`${b.name} · ${productName(product,kind==='clean'?'adult':'food')} 사용`);return b;
 }
 export function buy(state,id){
   const item=PRODUCTS[id];if(!item)throw new Error('상품을 선택하세요.');
@@ -148,8 +148,8 @@ export function breed(state, maleId, femaleId, random=Math.random, mediumId='bas
   if([m,f].some(b=>state.day-b.bredDay<4))throw new Error('번식 후 4일 동안 쉬어야 해요.');
   if(state.broods.length+auctionNurseries(state)>=3)throw new Error('번식통 세 개가 모두 사용 중이에요. 우화를 기다려 주세요.');
   if(state.bugs.length+auctionReserved(state)+(state.broods.length+1)*3+(state.expedition?1:0)>48)throw new Error('후손과 채집 개체를 위한 사육실 공간이 부족합니다.');
-  if(PRODUCTS[mediumId]?.kind!=='mat'||!compatibleFood(PRODUCTS[mediumId],m.species))throw new Error('이 종에 맞는 산란매트를 선택하세요.');
-  if((state.inventory[mediumId]||0)<2)throw new Error('선택한 산란매트 2개가 필요합니다.');
+  if(PRODUCTS[mediumId]?.kind!=='mat'||!compatibleFood(PRODUCTS[mediumId],m.species))throw new Error('이 종에 맞는 산란용 발효톱밥을 선택하세요.');
+  if((state.inventory[mediumId]||0)<2)throw new Error('선택한 산란용 발효톱밥 2개가 필요합니다.');
   const lineage=offspringLineage(state,m,f,chosenLineId);checkLineCapacity(state,lineage);
   spend(state,mediumId,2);gainXP(state,30);m.bredDay=state.day;f.bredDay=state.day;m.hunger=clamp(m.hunger-12);f.hunger=clamp(f.hunger-18);
   const parents=[m,f].map(snapshotBug);
@@ -262,7 +262,7 @@ export function careAidStatus(state){
 export function claimCareAid(state){
  const aid=careAidStatus(state);if(!aid.eligible)throw new Error(aid.claimed?'오늘의 기초 사육 지원을 이미 받았습니다.':'잎사귀와 용품이 부족한 돌봄 대상이 있을 때 받을 수 있습니다.');
  state.inventory.banana=(state.inventory.banana||0)+aid.jelly;state.inventory.basic_mat=(state.inventory.basic_mat||0)+aid.mat;syncSupplies(state);state.careAidDay=state.day;
- note(state,`기초 사육 지원 · 젤리 ${aid.jelly}개 · 매트 ${aid.mat}개`);return aid;
+ note(state,`기초 사육 지원 · 젤리 ${aid.jelly}개 · 톱밥 ${aid.mat}개`);return aid;
 }
 function memorialOf(state,id){const m=state.memorials.find(m=>m.id===id);if(!m)throw new Error('보관 중인 개체를 선택해 주세요.');return m;}
 export function prepareSpecimen(state,id){

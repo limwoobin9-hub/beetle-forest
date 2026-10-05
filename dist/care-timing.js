@@ -26,7 +26,7 @@ export function larvalFoodInterval(brood,realTime,itemId=brood.medium){
 export function careRemainingDays(value,interval){return Math.max(0,Math.ceil((value-40)*interval/60-1e-9));}
 export function adultCareText(bug,realTime,state=null){
  const mat=Math.round(adultBeddingInterval(bug,realTime)/equipmentEffects(state,bug.species).beddingDecay),remaining=careRemainingDays(bug.hygiene,mat);
- return `${realTime?`젤리 ${(bug.species==='rhino'||SPECIES[bug.species]?.family==='rhino')?'매일':`${jellyInterval(bug)}일마다`} · ${needsCare(bug.hunger)?'지금 교체 권장':`교체까지 약 ${careRemainingDays(bug.hunger,jellyInterval(bug))}일`}<br>`:''}성충 매트 ${mat}일 주기 · ${remaining?`교체까지 약 ${remaining}일`:'지금 교체 권장'}`;
+ return `${realTime?`젤리 ${(bug.species==='rhino'||SPECIES[bug.species]?.family==='rhino')?'매일':`${jellyInterval(bug)}일마다`} · ${needsCare(bug.hunger)?'지금 교체 권장':`교체까지 약 ${careRemainingDays(bug.hunger,jellyInterval(bug))}일`}<br>`:''}성충 바닥재 ${mat}일 주기 · ${remaining?`교체까지 약 ${remaining}일`:'지금 교체 권장'}`;
 }
 export function larvalCareText(brood,realTime,state=null){
  const interval=Math.round(larvalFoodInterval(brood,realTime)*equipmentEffects(state,brood.species).foodInterval),remaining=careRemainingDays(brood.food,interval);
@@ -34,7 +34,7 @@ export function larvalCareText(brood,realTime,state=null){
 }
 export function productCareText(product,realTime){
  if(product.kind==='jelly')return realTime?'장수풍뎅이 매일 · 사슴벌레 2~3일마다 교체':'';
- if(product.adultBedding)return realTime?'성충 매트 교체 약 2~4주':'성충 매트 교체 7~14일';
+ if(product.adultBedding)return realTime?'성충 바닥재 교체 약 2~4주':'성충 바닥재 교체 7~14일';
  if(product.food)return realTime?'유충 먹이 교체 약 60~90일':'유충 먹이 교체 7~14일';
  return '';
 }

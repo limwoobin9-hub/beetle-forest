@@ -11,7 +11,7 @@ function setup(inventory){
 test('all larval-only mats are rejected for adult care without spending or changing the save',()=>{
  for(const [id,p] of Object.entries(PRODUCTS).filter(([,p])=>p.kind==='mat'&&!isAdultBedding(p))){
   const [s,b]=setup({[id]:4,basic_mat:2}),before=structuredClone(s);
-  assert.throws(()=>care(s,b.id,'clean',id),/유충용 매트/);
+  assert.throws(()=>care(s,b.id,'clean',id),/유충용 톱밥/);
   assert.deepEqual(s,before,id);
  }
 });
@@ -65,3 +65,4 @@ test('support does not count shared basic mat twice for adults and larvae',()=>{
  s.inventory.coconut=2;syncSupplies(s);assert.equal(careAidStatus(s).mat,0);
  s.inventory.basic_mat=0;syncSupplies(s);assert.equal(careAidStatus(s).mat,1);
 });
+

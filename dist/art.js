@@ -273,7 +273,7 @@ function battleBackground(c){
 // three near and three far jointed legs. These are not rotated dorsal sprites.
 export function sideSprite(species='king',sex='male',frame=0,traits=[]){
  const key=`side-${species}-${sex}-${frame%2}-${[...traits].sort().join(',')}`;if(sprites.has(key))return sprites.get(key);
- if(['saw','little','stag'].includes(species)){const cvs=document.createElement('canvas');cvs.width=88;cvs.height=48;drawLateral(cvs.getContext('2d'),species,sex,frame,traits,{pen,poly,line,oval});sprites.set(key,cvs);return cvs;}
+ if(PIXEL_ANATOMY[species]?.foreign||['saw','little','stag'].includes(species)){const cvs=document.createElement('canvas');cvs.width=88;cvs.height=48;drawLateral(cvs.getContext('2d'),species,sex,frame,traits,{pen,poly,line,oval});sprites.set(key,cvs);return cvs;}
  const cvs=document.createElement('canvas');cvs.width=88;cvs.height=48;const c=cvs.getContext('2d'),p=pen(c);
  const rhino=species==='rhino',flat=species==='flat',rare=['redleg','dauria','twospot'].includes(species),dark=rhino?'#271b1c':'#172021',base=rhino?'#5c342b':species==='twospot'?'#be8241':species==='dauria'?'#72523b':'#303d3c',lit=rhino?'#956345':species==='twospot'?'#e3b66b':species==='dauria'?'#ac8254':'#64766e';
  const step=frame%2?2:-2;

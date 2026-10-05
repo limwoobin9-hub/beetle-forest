@@ -113,8 +113,8 @@ test('established habitats retain rare encounters and their higher capture diffi
  }}
  assert.ok(counts.redleg>0&&counts.dauria>0&&counts.twospot>0);assert.ok(counts.flat>counts.dauria*3);assert.ok(counts.flat>counts.twospot*3);
 });
-test('wild king stag stays below 70 mm and large breeding requires strong inherited potential',()=>{
- for(let i=0;i<=100;i++)assert.ok(createBug('king','male',i/100,1).length<=69);
+test('wild king stag follows the 76.1mm documented sample range and large breeding requires strong inherited potential',()=>{
+ for(let i=0;i<=100;i++)assert.ok(createBug('king','male',i/100,1).length<=76.1);
  assert.ok(createBug('king','male',.5,1).length<55);
  assert.ok(createBug('king','male',.5,1,'번식',[],1.15).length<65);
  assert.ok(createBug('king','male',1,1,'번식',[],1.15).length>70);
