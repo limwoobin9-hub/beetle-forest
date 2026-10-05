@@ -42,7 +42,7 @@ const JOBS={
 // row supplies the exact action labels and the work that happens during the wait.
 const STORIES={
  window:[
- ['창문에 붙은 희귀 손님','창문 밖에 눈빛이 독특한 {species}가 붙어 있어요.','window'],
+ ['창문에 붙은 희귀 손님','창문 밖에 희귀 특성을 가진 {species}가 붙어 있어요.','window'],
  ['커튼 뒤의 손님','커튼을 젖히자 창틀에 {species} 한 마리가 앉아 있어요.','window'],
  ['방충망에 걸린 손님','{species}가 방충망 바깥쪽에 매달려 있어요.','window'],
  ['베란다 화분의 손님','베란다 화분 잎 아래에 {species}가 쉬고 있어요.','shade'],
@@ -240,7 +240,7 @@ const STORIES={
  ['동아리의 유충 매트 선물','동아리에서 참나무 발효매트 선물을 보내왔어요.','giftFood'],
  ],
  night:[
- ['밤 창가의 희귀 손님','밤 창가에 눈빛이 독특한 {species}가 붙어 있어요.','night'],
+ ['밤 창가의 희귀 손님','밤 창가에 희귀 특성을 가진 {species}가 붙어 있어요.','night'],
  ['달빛 아래의 손님','달빛이 드는 난간에서 {species}를 발견했어요.','night'],
  ['야간등 아래의 손님','야간등 아래에 외형이 독특한 {species}가 찾아왔어요.','night'],
  ['정원등 뒤의 손님','정원등 뒤에서 {species}가 쉬고 있어요.','night'],
@@ -253,7 +253,7 @@ const STORIES={
  ['외등 받침의 손님','외등 받침 아래에 {species}가 붙어 있어요.','night'],
  ['밤 화분의 손님','밤에 물을 주려던 화분에서 {species}를 발견했어요.','night'],
  ['조명 선의 손님','베란다 조명 선에 {species}가 매달려 있어요.','night'],
- ['밤 창틀의 반짝이는 눈','창틀에서 눈빛이 독특한 {species}가 더듬이를 움직여요.','night'],
+ ['창틀에 매달린 밤 손님','창틀에 매달린 {species}가 더듬이를 움직여요.','night'],
  ['밤 정원 의자의 손님','정원 의자 밑에 {species}가 쉬고 있어요.','night'],
  ['가로등에서 날아온 손님','가로등 쪽에서 {species}가 날아와 문 앞에 앉았어요.','night'],
  ['현관 매트의 밤 손님','늦은 밤 현관 매트 위에 {species}가 들어왔어요.','night'],
