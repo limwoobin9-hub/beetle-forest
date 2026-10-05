@@ -1,5 +1,5 @@
 import {bindWorldMap,mapView} from './world-map.js';
-import {qualificationsScreen,forestTabs,overseasScreen,leaguePanel,albumPanel,ordersScreen,equipmentNote,updateCareerClocks} from './career-ui.js';
+import {qualificationsScreen,forestTabs,overseasScreen,leaguePanel,albumPanel,ordersScreen,equipmentNote} from './career-ui.js';
 import {earnQualification,qualificationStatus,claimLeagueReward,claimAlbum,collectorOrders,orderCandidates,deliverOrder,syncLeague} from './career.js';
 import {OVERSEAS_REGIONS,startForeignTrip,surveyForeignTrip,processForeignCatch,returnForeignTrip,claimForeignReturn,processOwnedForeign,claimRegion,syncForeignTrip} from './overseas.js';
 import {syncDailyEvents,beginDailyEvent,continueDailyEvent} from './events.js';
@@ -400,7 +400,7 @@ async function handleAction(el){
   if(action==='foreign-region'){if(!state.foreignTrip&&OVERSEAS_REGIONS[el.dataset.region]){ui.overseasRegion=el.dataset.region;save();render();}return;}
   if(action==='foreign-start-review'){
    const r=OVERSEAS_REGIONS[el.dataset.region];if(!r)return;
-   showModal(`${r.name} 원정 출발`,`${r.cost.toLocaleString()} 잎사귀를 지불합니다. 출국·귀국은 즉시 완료되고, 현지 탐사 사이에는 1시간이 걸립니다.<p class="trip-rule">자격 없이도 출발할 수 있습니다. 생체 반입 자격이 없으면 현지에서 표본용 처리 후 귀국하세요.</p><div class="modal-buttons">${btn('취소','close','quiet')}${btn('여행비 지불하고 출발','foreign-start-confirm','primary',`data-region="${el.dataset.region}"`)}</div>`);return;
+   showModal(`${r.name} 원정 출발`,`${r.cost.toLocaleString()} 잎사귀를 지불합니다. 출국·현지 이동·탐사·귀국은 모두 대기 없이 바로 진행됩니다.<p class="trip-rule">자격 없이도 출발할 수 있습니다. 생체 반입 자격이 없으면 현지에서 표본용 처리 후 귀국하세요.</p><div class="modal-buttons">${btn('취소','close','quiet')}${btn('여행비 지불하고 출발','foreign-start-confirm','primary',`data-region="${el.dataset.region}"`)}</div>`);return;
   }
   if(action==='foreign-start-confirm'){const t=act(()=>startForeignTrip(state,el.dataset.region));if(t){ui.view='overseas';closeModal();save();render();toast('현지 도착 · 바로 탐사할 수 있어요.');}return;}
   if(action==='foreign-survey'){act(()=>surveyForeignTrip(state,createBug),b=>`${b.name} ${mm(b.length)} mm 현지 채집`);return;}
@@ -545,7 +545,7 @@ window.addEventListener('online',()=>{if(account&&account.cloud.status==='error'
 window.addEventListener('pagehide',()=>{if(activeWorld)save();account?.cloud.flush();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){save();account?.cloud.flush();}if(!document.hidden){settleClock();updateEnvironmentLabels();refreshWeather();paint(performance.now());}});
 window.addEventListener('pageshow',()=>settleClock());
-setInterval(()=>{if(!document.hidden){settleClock();updateEnvironmentLabels();updateAuctionClocks();updateCareerClocks();updateEventClocks();refreshWeather();}},1000);
+setInterval(()=>{if(!document.hidden){settleClock();updateEnvironmentLabels();updateAuctionClocks();updateEventClocks();refreshWeather();}},1000);
 function registerTools(){
   const context=document.modelContext;if(!context?.registerTool)return;
   const lifecycle=new AbortController();window.addEventListener('pagehide',()=>lifecycle.abort(),{once:true});

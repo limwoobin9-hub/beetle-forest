@@ -26,8 +26,8 @@ test('all sixteen destinations need only money, including zero EXP and a complet
  }
  assert.deepEqual([...reachable].sort(),Object.keys(SPECIES).filter(sp=>SPECIES[sp].foreign).sort());
 });
-test('a trip survives reload, waits in real time, cannot reroll findings, and never consumes domestic energy',()=>{
- const {s,t}=travel(),stored=JSON.parse(JSON.stringify(s)),snapshot=structuredClone(t.catches);assert.equal(s.energy,5);assert.throws(()=>surveyForeignTrip(s,createBug,t.waitUntil-1),/현지/);assert.deepEqual(t.catches,snapshot);valid(s);
+test('a trip survives reload, proceeds immediately, cannot reroll findings, and never consumes domestic energy',()=>{
+ const {s,t}=travel(),stored=JSON.parse(JSON.stringify(s)),snapshot=structuredClone(t.catches);assert.equal(s.energy,5);assert.throws(()=>surveyForeignTrip(s,createBug,t.waitUntil-1),/시각/);assert.deepEqual(t.catches,snapshot);valid(s);
  syncForeignTrip(stored,t.waitUntil);const next=surveyForeignTrip(stored,createBug,t.waitUntil);syncForeignTrip(s,t.waitUntil);const same=surveyForeignTrip(s,createBug,t.waitUntil);assert.deepEqual([next.species,next.sex,next.length,next.traits],[same.species,same.sex,same.length,same.traits]);valid(stored);
  assert.throws(()=>startForeignTrip(s,'japan',NOW),/진행 중/);
 });

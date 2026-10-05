@@ -23,13 +23,16 @@ test('coastline data includes Korea, Japan, Sulawesi, Java and actual continenta
  for(const point of [[127.5,37],[138,36],[121.5,-2],[110,-7.5],[114,1],[-60,-4],[12,5],[145,-19]])assert.equal(land(point),true,point.join(','));
  for(const point of [[-140,0],[-30,0],[135,15],[90,-20]])assert.equal(land(point),false,point.join(','));
 });
-test('outbound and inbound travel are instant, and old saved flights migrate without losing catches',()=>{
+test('all overseas travel and surveys are instant, and old saved waits migrate without losing catches',()=>{
  const s=newGame(NOW);s.coins=5000;s.career.qualifications=['overseas_live'];const t=startForeignTrip(s,'japan',NOW);
- assert.equal(t.phase,'field');surveyForeignTrip(s,createBug,NOW);assert.equal(t.phase,'surveying');assert.equal(syncForeignTrip(s,NOW+HOUR-1),false);
- syncForeignTrip(s,NOW+HOUR);const catches=structuredClone(t.catches);returnForeignTrip(s,NOW+HOUR);assert.equal(t.phase,'arrived');claimForeignReturn(s,NOW+HOUR);valid(s);
+ assert.equal(t.phase,'field');surveyForeignTrip(s,createBug,NOW);const catches=structuredClone(t.catches);
+ for(let i=1;i<3;i++){assert.equal(t.phase,'field');assert.equal(t.waitUntil,NOW);surveyForeignTrip(s,createBug,NOW);}
+ assert.equal(t.surveys,3);assert.throws(()=>surveyForeignTrip(s,createBug,NOW),/3회/);returnForeignTrip(s,NOW);assert.equal(t.phase,'arrived');claimForeignReturn(s,NOW);assert.equal(s.bugs.length,3);valid(s);
  const old=newGame(NOW);old.coins=5000;const outbound=startForeignTrip(old,'japan',NOW);outbound.phase='outbound';outbound.waitUntil=NOW+5*HOUR;
  assert.equal(syncForeignTrip(old,NOW),true);assert.equal(outbound.phase,'field');assert.equal(outbound.waitUntil,NOW);valid(old);
- old.career.qualifications=['overseas_live'];outbound.catches=catches;outbound.surveys=1;outbound.phase='returning';outbound.waitUntil=NOW+5*HOUR;
+ old.career.qualifications=['overseas_live'];outbound.catches=catches;outbound.surveys=1;outbound.phase='surveying';outbound.waitUntil=NOW+5*HOUR;
+ assert.equal(syncForeignTrip(old,NOW),true);assert.equal(outbound.phase,'field');assert.equal(outbound.waitUntil,NOW);assert.deepEqual(outbound.catches,catches);valid(old);
+ outbound.phase='returning';outbound.waitUntil=NOW+5*HOUR;
  assert.equal(syncForeignTrip(old,NOW),true);assert.equal(outbound.phase,'arrived');assert.deepEqual(outbound.catches,catches);claimForeignReturn(old,NOW);valid(old);
 });
 test('small protected adults sell at a substantial premium in both sexes, with deterministic competitive bids',()=>{
