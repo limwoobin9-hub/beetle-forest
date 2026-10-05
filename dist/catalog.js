@@ -1,5 +1,6 @@
 import {SPECIES} from './world.js';
 import {BASE_ROOM_CAPACITY,ROOM_EXPANSIONS} from './room-capacity.js';
+import {NURSERY_PRODUCT_ID} from './nursery-capacity.js';
 export const SHOP_AREAS = [
  {id:'basic',name:'기본 사육용품',level:1,color:'#c4ad73'},
  {id:'nutrition',name:'영양 젤리',level:2,color:'#c89360'},
@@ -10,6 +11,7 @@ export const SHOP_AREAS = [
  {id:'equipment',name:'사육·원정 설비',level:1,color:'#819d96'},
 ];
 export const PRODUCTS = {
+ [NURSERY_PRODUCT_ID]:{name:'추가 번식통',kind:'gear',stackable:true,area:'equipment',price:1000,qty:1,color:'#a7b793',effect:'동시 번식통 +1개 · 영구 추가 · 반복 구매 가능'},
  banana:{name:'바나나 젤리',kind:'jelly',area:'basic',price:40,qty:6,color:'#e6bb53',health:8,decay:18,duration:1,effect:'포만감 100 · 건강 +8'},
  brown_sugar:{name:'흑당 젤리',kind:'jelly',area:'basic',price:50,qty:6,color:'#815240',health:10,decay:16,duration:2,effect:'건강 +10 · 2일간 포만감 감소 16'},
  fruit_mix:{name:'과일 믹스 젤리',kind:'jelly',area:'basic',price:55,qty:6,color:'#d57858',health:12,decay:18,duration:1,effect:'포만감 100 · 건강 +12'},

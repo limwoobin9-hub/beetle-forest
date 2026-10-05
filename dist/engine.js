@@ -1,4 +1,5 @@
 import {roomCapacity,roomLevel,validRoomExpansions} from './room-capacity.js';
+import {nurseryCapacity} from './nursery-capacity.js';
 import {newCareer,migrateCareer,recordCare,validCareer,syncLeague,leagueClass,LEAGUE_CLASSES,recordLeagueFight} from './career.js';
 import {careSupplyPlan,defaultCareSupply} from './care-supplies.js';
 import {syncForeignTrip,validOverseas} from './overseas.js';
@@ -110,10 +111,11 @@ export function buy(state,id){
   const item=PRODUCTS[id];if(!item)throw new Error('상품을 선택하세요.');
   const access=shopAccess(state,item.area);if(!access.unlocked)throw new Error(access.missing.join(' · ')+' 필요');
   if(state.coins<item.price)throw new Error('잎사귀가 부족합니다.');
-  if(item.kind==='gear'&&state.inventory[id])throw new Error('이미 보유한 영구 설비입니다.');
+  if(item.kind==='gear'&&!item.stackable&&state.inventory[id])throw new Error('이미 보유한 영구 설비입니다.');
+  if(item.stackable&&(state.inventory[id]||0)+item.qty>1e6)throw new Error('보유 가능한 수량을 모두 구매했습니다.');
   if(item.roomStage&&item.roomStage!==roomLevel(state)+1)throw new Error('이전 단계의 사육실 확장을 먼저 구매하세요.');
   state.coins-=item.price;state.inventory[id]=(state.inventory[id]||0)+item.qty;syncSupplies(state);
-  const message=item.roomStage?`${item.name} 완료 · 성충 ${roomCapacity(state)}마리 수용`:`${item.name} ${item.qty}개 구매`;note(state,message);return message;
+  const message=item.roomStage?`${item.name} 완료 · 성충 ${roomCapacity(state)}마리 수용`:item.stackable?`${item.name} 구매 · 동시 번식통 ${nurseryCapacity(state)}개`:`${item.name} ${item.qty}개 구매`;note(state,message);return message;
 }
 export function startExpedition(state,location,random=Math.random,{focus='standard'}={}){
   if(!['standard','large'].includes(focus))throw new Error('탐사 방식을 선택하세요.');
@@ -165,7 +167,7 @@ export function breed(state, maleId, femaleId, random=Math.random, mediumId='bas
   if(m.species!==f.species)throw new Error('같은 종끼리만 번식할 수 있어요.');
   if([m,f].some(b=>b.health<55||b.hunger<45))throw new Error('부모가 건강하고 충분히 먹어야 해요. 먼저 돌봐 주세요.');
   if([m,f].some(b=>state.day-b.bredDay<4))throw new Error('번식 후 4일 동안 쉬어야 해요.');
-  if(state.broods.length+auctionNurseries(state)>=3)throw new Error('번식통 세 개가 모두 사용 중이에요. 우화를 기다려 주세요.');
+  if(state.broods.length+auctionNurseries(state)>=nurseryCapacity(state))throw new Error(`번식통 ${nurseryCapacity(state)}개가 모두 사용 중이에요. 상점에서 추가 번식통을 구매할 수 있어요.`);
   if(state.bugs.length+auctionReserved(state)+(state.broods.length+1)*3+(state.expedition?1:0)>roomCapacity(state))throw new Error('후손과 채집 개체를 위한 사육실 공간이 부족합니다.');
   if(PRODUCTS[mediumId]?.kind!=='mat'||!compatibleFood(PRODUCTS[mediumId],m.species))throw new Error('이 종에 맞는 산란용 발효톱밥을 선택하세요.');
   if((state.inventory[mediumId]||0)<2)throw new Error('선택한 산란용 발효톱밥 2개가 필요합니다.');
@@ -373,7 +375,7 @@ export function claimResearch(state,id){const r=currentResearch(state);if(!r||r.
 export function validateSave(s){
   const finite=(n,min,max)=>Number.isFinite(n)&&n>=min&&n<=max;
   if(!s||![1,2,3,4,5].includes(s.version)||!finite(s.day,1,1000000)||!Number.isInteger(s.day)||!finite(s.coins,0,1e9)||!finite(s.jelly,0,1e6)||!finite(s.substrate,0,1e6)||!finite(s.energy,0,5))return false;
-  if(!Array.isArray(s.bugs)||s.bugs.length>roomCapacity(s)||!Array.isArray(s.broods)||s.broods.length>3||s.bugs.length+s.broods.length*3>roomCapacity(s)||!Array.isArray(s.log)||!Array.isArray(s.discoveries)||!s.records||!finite(s.captures,0,1e9))return false;
+  if(!Array.isArray(s.bugs)||s.bugs.length>roomCapacity(s)||!Array.isArray(s.broods)||s.broods.length>nurseryCapacity(s)||s.bugs.length+s.broods.length*3>roomCapacity(s)||!Array.isArray(s.log)||!Array.isArray(s.discoveries)||!s.records||!finite(s.captures,0,1e9))return false;
   if(s.version>=4&&(!s.settings||typeof s.settings.realTime!=='boolean'||typeof s.settings.realGrowth!=='boolean'||s.settings.realGrowth&&!s.settings.realTime||!s.clock||!finite(s.clock.anchorAt,0,8.64e15)||(s.clock.calendar!==undefined&&typeof s.clock.calendar!=='boolean')))return false;
   if(s.settings?.autoBuyCare!==undefined&&typeof s.settings.autoBuyCare!=='boolean')return false;
   if(!validRoomExpansions(s)||!validCareer(s)||!validLines(s)||s.dailyEvents!==undefined&&!validDailyEvents(s.dailyEvents))return false;
