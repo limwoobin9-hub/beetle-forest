@@ -1,105 +1,136 @@
-import {EVENT_CATALOG,EVENT_TEMPLATES,EVENT_BY_KEY,eventProtocol,eventFollowup,eventTrial} from './event-catalog.js';
+import {EVENT_CATALOG,EVENT_TEMPLATES,EVENT_BY_KEY} from './event-catalog.js';
 import {SPECIES} from './world.js';
-import {keeperLevel} from './catalog.js';
-import {calendarDay,stageName} from './time.js';
+import {PRODUCTS,keeperLevel,syncSupplies} from './catalog.js';
+import {calendarDay} from './time.js';
+import {roomEnvironment} from './environment.js';
 import {speciesTraits} from './traits.js';
 import {auctionReserved} from './auctions.js';
 
-export const EVENT_HOUR=3600000,EVENT_DAY=24*EVENT_HOUR,EVENT_RETRY=15*60000;
-const STAGES=['new','investigating','waiting','ready','followup','final-wait','complete','claimed','expired'];
-const ACTIVITIES=['care','capture','brood'];
-const terminal=e=>e.stage==='expired'||e.stage==='claimed'&&(!EVENT_BY_KEY[e.key].guest||e.guestTaken);
+export const EVENT_HOUR=3600000,EVENT_DAY=24*EVENT_HOUR;
+const STAGES=['new','working','step-ready','ready','claimed','expired'];
 const hash=text=>{let h=2166136261;for(const c of String(text)){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;};
 const random=seed=>()=>{seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return (seed>>>0)/4294967296;};
-const eventNote=(state,text)=>{state.log.unshift({day:state.day,text});state.log=state.log.slice(0,40);};
-export function newDailyEvents(){return {version:1,dayKey:-1,activities:{care:0,capture:0,brood:0},cases:[]};}
-function dataOf(state){return state.dailyEvents??=newDailyEvents();}
-function clock(now){if(!Number.isFinite(now)||now<0)throw new Error('현재 시간을 확인할 수 없습니다.');}
-function caseOf(state,id){const e=dataOf(state).cases.find(e=>e.id===id);if(!e)throw new Error('사건을 찾을 수 없어요.');return e;}
-function liveCase(state,id,now){syncDailyEvents(state,now);const e=caseOf(state,id);if(e.stage==='expired')throw new Error('해결 시간이 끝난 사건입니다. 새 사건에 도전해 보세요.');if(e.retryAt>now)throw new Error('다른 방법의 결과를 비교하는 중이에요. 표시된 시각에 다시 확인해 주세요.');return e;}
+const integer=n=>Number.isSafeInteger(n)&&n>=0;
+const eventNote=(s,text)=>{s.log.unshift({day:s.day,text});s.log=s.log.slice(0,40);};
+const terminal=e=>e.stage==='expired'||e.stage==='claimed'&&(!e.guest||e.guestTaken);
+export function newDailyEvents(){return {version:2,dayKey:-1,cases:[]};}
 export function eventDefinition(e){return EVENT_BY_KEY[e.key];}
-export function eventProgress(state,e){return e.activity?Math.min(e.goal,Math.max(0,dataOf(state).activities[e.activity]-e.activityStart)+e.trials):0;}
-export function eventReward(e){return Math.floor(e.reward*Math.max(.7,1-e.mistakes*.1));}
-export function eventChoices(e,phase='first'){
- const p=phase==='first'?eventProtocol(eventDefinition(e),e.variant):phase==='followup'?eventFollowup((e.variant+e.seed%4)%4):eventTrial(e.trials+e.seed%7);
- const order=[0,1,2,3],rng=random(hash(`${e.seed}:${phase}:${e.trials}`));
- for(let i=order.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
- return {clue:p.clue,options:order.map(value=>({value,label:p.options[value]})),answer:p.answer};
-}
-export function syncDailyEvents(state,now=Date.now()){
- clock(now);const data=dataOf(state),day=calendarDay(now);let changed=false;
- for(const e of data.cases){
-  for(const field of ['retryAt','trialAt'])if(e[field]>0&&e[field]<=now){e[field]=0;changed=true;}
-  if(!['complete','claimed','expired','new'].includes(e.stage)&&e.deadlineAt<=now){e.stage='expired';changed=true;}
-  else if(e.stage==='waiting'&&e.waitUntil<=now){e.stage='ready';changed=true;}
-  else if(e.stage==='final-wait'&&e.waitUntil<=now){e.stage='complete';changed=true;}
+export function eventReward(e){return e.reward;}
+export function eventStep(e){return eventDefinition(e).steps[e.step];}
+export function eventRemainingWork(e){return eventDefinition(e).steps.slice(e.step+1).reduce((n,p)=>n+p.hours*EVENT_HOUR,0);}
+function legacyGuest(e){const [family,index]=e.key.split(':')[0].split('-');return family==='window'||family==='night'||family==='rescue'&&Number(index)%2===0;}
+export function migrateDailyEvents(state,now=Date.now()){
+ if(!state.dailyEvents){state.dailyEvents=newDailyEvents();return true;}
+ const old=state.dailyEvents;if(old.version===2)return false;
+ if(old.version!==1)throw new Error('사건 저장을 읽을 수 없어요.');
+ const data=newDailyEvents();
+ for(const e of old.cases){
+  if(e.stage==='new'||e.stage==='expired')continue;
+  const t=eventDefinition(e),startedAt=e.startedAt||e.createdAt,waitUntil=e.waitUntil||startedAt+t.hours*EVENT_HOUR;
+  const stage=e.stage==='claimed'?'claimed':e.stage==='complete'||waitUntil<=now?'ready':'working';
+  data.cases.push({id:'previous-'+e.id,key:e.key,dayKey:calendarDay(e.createdAt),seed:e.seed,createdAt:e.createdAt,startedAt,deadlineAt:e.deadlineAt||startedAt+EVENT_DAY,step:t.steps.length-1,stepStartedAt:startedAt,waitUntil,stage,reward:Math.floor(e.reward*Math.max(.7,1-e.mistakes*.1)),guest:legacyGuest(e),rareGuest:legacyGuest(e),guestTaken:e.guestTaken,targetIds:[],context:{period:'day',weather:null,region:'',temperature:null},legacy:true});
  }
- if(day>data.dayKey){
+ state.dailyEvents=data;return true;
+}
+function dataOf(s,now){migrateDailyEvents(s,now);return s.dailyEvents;}
+function clock(now){if(!integer(now))throw new Error('현재 시간을 확인할 수 없어요.');}
+function caseOf(s,id){const e=s.dailyEvents.cases.find(e=>e.id===id);if(!e)throw new Error('미션을 찾을 수 없어요.');return e;}
+function liveCase(s,id,now){syncDailyEvents(s,now);const e=caseOf(s,id);if(e.stage==='expired')throw new Error('미션 기한이 끝났어요.');return e;}
+function eligible(s,t,env){
+ if(t.requires==='insects'&&!s.bugs.length&&!s.broods.length)return false;
+ if(t.requires==='brood'&&!s.broods.some(b=>PRODUCTS[b.medium]?.kind==='fungus'))return false;
+ if(t.requires==='stock'&&!Object.entries(s.inventory).some(([id,n])=>n>0&&PRODUCTS[id]?.kind==='mat'))return false;
+ if(t.family==='night'&&env.period!=='night')return false;
+ if(t.job==='rain'&&!['rain','storm'].includes(env.weather))return false;
+ if(t.job==='heat'&&!(env.temperature>=28&&env.period!=='night'))return false;
+ return true;
+}
+function weight(t,env){
+ let n=1;
+ if(env.period==='night'&&t.family==='night')n*=7;
+ if(['rain','storm'].includes(env.weather)&&['rain','coldGuest','wetMat'].includes(t.job))n*=6;
+ if(env.weather==='storm'&&t.job==='wind')n*=6;
+ if(env.temperature>=28&&t.job==='heat')n*=6;
+ if(env.weather==='snow'&&t.job==='coldGuest')n*=6;
+ return n;
+}
+function pick(pool,rng,env){
+ const total=pool.reduce((n,t)=>n+weight(t,env),0);let roll=rng()*total;
+ for(const t of pool){roll-=weight(t,env);if(roll<=0)return t;}return pool.at(-1);
+}
+export function syncDailyEvents(state,now=Date.now(),environment={}){
+ clock(now);let changed=migrateDailyEvents(state,now);const data=state.dailyEvents,day=calendarDay(now);
+ for(const e of data.cases){
+  if(e.stage==='working'&&e.waitUntil<=now&&e.waitUntil<=e.deadlineAt){e.stage=e.step===eventDefinition(e).steps.length-1?'ready':now>=e.deadlineAt?'expired':'step-ready';changed=true;}
+  else if(['working','step-ready'].includes(e.stage)&&now>=e.deadlineAt){e.stage='expired';changed=true;}
+ }
+ if(day>data.dayKey&&!environment.pending){
   for(const e of data.cases)if(e.stage==='new'){e.stage='expired';changed=true;}
-  const rng=random(hash(`${state.clock?.anchorAt}:${state.settings?.realTime}:${day}:daily-events-v1`)),species=Object.keys(SPECIES);
-  const pools=[EVENT_TEMPLATES.filter(t=>t.family==='window'||t.family==='night'),EVENT_TEMPLATES.filter(t=>['hygiene','supplies','weather','workshop','rescue'].includes(t.family)),EVENT_TEMPLATES.filter(t=>['request','exchange','habitat'].includes(t.family))];
-  for(let slot=0;slot<3;slot++){
-   const t=pools[slot][Math.floor(rng()*pools[slot].length)],sp=species[Math.floor(rng()*species.length)],seed=Math.floor(rng()*4294967295),variant=Math.floor(rng()*4);
-   let activity=t.activity;
-   if(activity==='brood'&&!state.broods.some(b=>['1령','2령','3령'].includes(stageName(b))))activity=state.bugs.length?'care':'capture';
-   if(activity==='care'&&!state.bugs.length)activity='capture';
-   const goal=activity==='care'?Math.max(1,Math.min(t.goal,state.bugs.length)):t.goal;
-   data.cases.push({id:`${day}-${slot}-${seed}`,key:`${t.id}:${sp}`,seed,variant,firstHours:2+slot,createdAt:now,startedAt:0,deadlineAt:0,stage:'new',waitUntil:0,retryAt:0,trialAt:0,activity,goal:activity?goal:0,activityStart:0,trials:0,mistakes:0,reward:t.reward+keeperLevel(state)*25+(activity?30:0),guestTaken:false,notice:''});
-  }
+  const actual=roomEnvironment(now),env={period:environment.period||actual.period,weather:environment.weather||null,temperature:Number.isFinite(environment.temperature)?environment.temperature:null,region:typeof environment.region==='string'?environment.region:''};
+  const rng=random(hash(String(state.clock?.anchorAt)+':'+state.settings?.realTime+':'+day+':missions-v2'));
+  const tone=rng()<.5?'good':'bad',recent=new Set(data.cases.filter(e=>!e.legacy).slice(-7).map(e=>eventDefinition(e).id));
+  let pool=EVENT_TEMPLATES.filter(t=>t.tone===tone&&eligible(state,t,env)&&!recent.has(t.id));
+  if(!pool.length)pool=EVENT_TEMPLATES.filter(t=>t.tone===tone&&eligible(state,t,env));
+  const t=pick(pool,rng,env);
+  const owned=[...state.bugs,...state.broods].map(b=>b.species),species=t.tone==='bad'&&t.requires==='insects'&&owned.length?owned:t.requires==='brood'&&state.broods.length?state.broods.map(b=>b.species):Object.keys(SPECIES);
+  const sp=species[Math.floor(rng()*species.length)],seed=Math.floor(rng()*4294967295);
+  data.cases.push({id:day+'-mission-'+seed,key:t.id+':'+sp,dayKey:day,seed,createdAt:now,startedAt:0,deadlineAt:0,step:0,stepStartedAt:0,waitUntil:0,stage:'new',reward:t.reward+keeperLevel(state)*25,guest:t.guest,rareGuest:t.rareGuest,guestTaken:false,targetIds:[],context:env,legacy:false});
   data.dayKey=day;changed=true;
  }
- const recentTerminal=data.cases.filter(terminal).slice(-30),keep=new Set(recentTerminal.map(e=>e.id));
- const cases=data.cases.filter(e=>!terminal(e)||keep.has(e.id));if(cases.length!==data.cases.length){data.cases=cases;changed=true;}
- return changed;
+ const keep=new Set(data.cases.filter(terminal).slice(-30).map(e=>e.id)),cases=data.cases.filter(e=>!terminal(e)||keep.has(e.id));
+ if(cases.length!==data.cases.length){data.cases=cases;changed=true;}return changed;
 }
-export function recordEventActivity(state,kind,amount=1){if(!ACTIVITIES.includes(kind)||!Number.isSafeInteger(amount)||amount<1)throw new Error('사건 활동 기록 오류');const d=dataOf(state);d.activities[kind]+=amount;if(kind==='brood')d.activities.care+=amount;}
 export function beginDailyEvent(state,id,now=Date.now()){
- const e=liveCase(state,id,now);if(e.stage!=='new')throw new Error('이미 시작한 사건입니다.');
- e.startedAt=now;e.deadlineAt=now+EVENT_DAY;e.activityStart=e.activity?dataOf(state).activities[e.activity]:0;e.stage='investigating';e.notice='먼저 단서를 읽고 준비 방법을 골라주세요.';return e;
+ const e=liveCase(state,id,now);if(e.stage!=='new')throw new Error('이미 시작한 미션이에요.');
+ e.startedAt=now;e.deadlineAt=now+EVENT_DAY;e.stepStartedAt=now;e.waitUntil=now+eventStep(e).hours*EVENT_HOUR;e.stage='working';
+ e.targetIds=state.bugs.map(b=>b.id);eventNote(state,'미션 시작 · '+eventDefinition(e).title);return e;
 }
-export function chooseDailyEvent(state,id,phase,value,now=Date.now()){
- const e=liveCase(state,id,now);if(!['first','followup'].includes(phase)||e.stage!==(phase==='first'?'investigating':'followup'))throw new Error('현재 단계의 선택지를 골라주세요.');
- if(!Number.isInteger(value)||value<0||value>3)throw new Error('선택지를 골라주세요.');
- const p=eventChoices(e,phase);
- if(value!==p.answer){e.mistakes++;e.retryAt=now+EVENT_RETRY;e.notice='단서와 한 조건씩 비교하는 원칙을 다시 확인하세요. 15분 뒤 새 시험 결과로 재도전할 수 있어요.';return {correct:false,event:e};}
- e.retryAt=0;
- if(phase==='first'){const hours=e.firstHours;e.waitUntil=now+hours*EVENT_HOUR;e.stage=hours?'waiting':'ready';e.notice=hours?'준비 완료 · 관찰 결과를 기다려 주세요.':'준비 완료 · 결과를 확인할 수 있어요.';}
- else {e.stage='final-wait';e.waitUntil=now+(2+e.seed%3)*EVENT_HOUR;e.notice='중간 판정 완료 · 후속 관찰을 진행해요. 최종 결과가 나오면 보상을 받을 수 있어요.';}
- return {correct:true,event:e};
-}
-export function checkDailyEvent(state,id,now=Date.now()){
- const e=liveCase(state,id,now);if(e.stage!=='ready')throw new Error('관찰이 끝나는 시각에 결과를 확인해 주세요.');
- if(e.activity&&eventProgress(state,e)<e.goal)throw new Error('실제 활동 또는 보조 시료 검사를 먼저 완료해 주세요.');
- e.stage='followup';e.notice='새로 나온 기록을 읽고 결과를 판정해 주세요.';return e;
-}
-export function runEventTrial(state,id,value,now=Date.now()){
- const e=liveCase(state,id,now);if(!['waiting','ready'].includes(e.stage)||!e.activity||eventProgress(state,e)>=e.goal)throw new Error('현재 보조 검사가 필요하지 않아요.');
- if(e.trialAt>now)throw new Error('다음 보조 시료가 준비되는 시각에 확인해 주세요.');
- if(!Number.isInteger(value)||value<0||value>3)throw new Error('검사 결과를 골라주세요.');
- if(value!==eventChoices(e,'trial').answer){e.mistakes++;e.retryAt=now+EVENT_RETRY;e.notice='용기의 무게를 빼고 내용물만 기록하세요. 15분 뒤 재검사할 수 있어요.';return {correct:false,event:e};}
- e.trials++;e.trialAt=now+EVENT_RETRY;e.notice='보조 검사 기록 완료 · 실제 활동 대신 이 기록을 사용할 수 있어요.';return {correct:true,event:e};
+export function continueDailyEvent(state,id,now=Date.now()){
+ const e=liveCase(state,id,now);if(e.stage!=='step-ready')throw new Error('현재 작업을 마친 뒤 진행할 수 있어요.');
+ if(now+eventRemainingWork(e)>e.deadlineAt)throw new Error('남은 작업을 마치기에는 시간이 부족해요. 미션 기한은 시작 후 24시간이에요.');
+ e.step++;e.stepStartedAt=now;e.waitUntil=now+eventStep(e).hours*EVENT_HOUR;e.stage='working';return e;
 }
 export function claimDailyEvent(state,id,now=Date.now()){
- const e=liveCase(state,id,now);if(e.stage!=='complete')throw new Error('사건을 해결한 뒤 보상을 받을 수 있어요.');
- const coins=eventReward(e);state.coins+=coins;state.xp+=20;e.stage='claimed';eventNote(state,`사건 해결 · ${eventDefinition(e).title} · ${coins} 잎사귀`);return {coins,guest:eventDefinition(e).guest,event:e};
+ const e=liveCase(state,id,now);if(e.stage!=='ready')throw new Error('작업을 모두 마친 뒤 보상을 받을 수 있어요.');
+ const t=eventDefinition(e),coins=e.reward;state.coins+=coins;state.xp+=20;e.stage='claimed';
+ // Old completed missions already promised money/guests, not new item bonuses.
+ const item=!e.legacy&&t.item?t.item:null,qty=item?t.qty:0;
+ if(item){state.inventory[item]=(state.inventory[item]||0)+qty;syncSupplies(state);}
+ if(!e.legacy&&t.clean)for(const b of state.bugs)if(e.targetIds.includes(b.id))b.hygiene=100;
+ eventNote(state,'미션 완료 · '+t.title+' · '+coins+' 잎사귀');
+ return {coins,item,qty,guest:e.guest,event:e};
 }
 export function takeEventGuest(state,id,createBug,now=Date.now()){
- const e=liveCase(state,id,now),t=eventDefinition(e);if(e.stage!=='claimed'||!t.guest||e.guestTaken)throw new Error('받을 수 있는 사건 손님이 없어요.');
- if(state.bugs.length+state.broods.length*3+auctionReserved(state)>=48)throw new Error('사육 공간을 마련하면 손님을 맞이할 수 있어요. 보상은 계속 보관됩니다.');
- const traits=speciesTraits(t.species),trait=traits[e.seed%traits.length]?.id;
- const b=createBug(t.species,e.seed%2?'female':'male',.72+(e.seed%23)/100,state.day,`사건 · ${t.title}`,null,1,null,{traits:trait?[trait]:[]});
+ const e=liveCase(state,id,now),t=eventDefinition(e);if(e.stage!=='claimed'||!e.guest||e.guestTaken)throw new Error('받을 손님이 없어요.');
+ if(state.bugs.length+state.broods.length*3+auctionReserved(state)>=48)throw new Error('사육 공간을 마련하면 손님을 데려올 수 있어요. 손님은 계속 기다립니다.');
+ const traits=speciesTraits(t.species),trait=e.rareGuest?traits[e.seed%traits.length]?.id:null;
+ const b=createBug(t.species,e.seed%2?'female':'male',.72+(e.seed%23)/100,state.day,'사건 · '+t.title,null,1,null,{traits:trait?[trait]:[]});
  state.bugs.push(b);e.guestTaken=true;const key=b.species+'-'+b.sex;state.records[key]=Math.max(state.records[key]||0,b.length);if(!state.discoveries.includes(b.species))state.discoveries.push(b.species);
- eventNote(state,`특별한 손님 · ${SPECIES[b.species].name} · ${b.length} mm · 사건 보상`);return b;
+ eventNote(state,'새 손님 · '+SPECIES[b.species].name+' · '+b.length+' mm');return b;
+}
+function validLegacy(d){
+ const times=n=>Number.isFinite(n)&&n>=0,stages=['new','investigating','waiting','ready','followup','final-wait','complete','claimed','expired'],activities=['care','capture','brood'];
+ if(!d||d.version!==1||!Number.isInteger(d.dayKey)||d.dayKey< -1||!d.activities||activities.some(k=>!integer(d.activities[k]))||!Array.isArray(d.cases)||d.cases.length>20000)return false;
+ const ids=new Set();for(const e of d.cases){
+  if(!e||typeof e.id!=='string'||!e.id||ids.has(e.id)||!EVENT_BY_KEY[e.key]||!stages.includes(e.stage)||!integer(e.seed)||e.seed>4294967295||![2,3,4].includes(e.firstHours)||!Number.isInteger(e.variant)||e.variant<0||e.variant>3||![e.createdAt,e.startedAt,e.deadlineAt,e.waitUntil,e.retryAt,e.trialAt].every(times)||!integer(e.mistakes)||!integer(e.trials)||!integer(e.reward)||e.reward<1||typeof e.guestTaken!=='boolean'||typeof e.notice!=='string'||e.notice.length>500||!integer(e.goal)||e.goal>2||!integer(e.activityStart)||e.activity!==null&&!activities.includes(e.activity))return false;
+  if(e.activity&&e.activityStart>d.activities[e.activity]||e.guestTaken&&e.stage!=='claimed'||e.activity&&e.goal<1||!e.activity&&e.goal!==0||!['new','expired'].includes(e.stage)&&e.deadlineAt!==e.startedAt+EVENT_DAY)return false;ids.add(e.id);
+ }return true;
 }
 export function validDailyEvents(d){
- const integer=n=>Number.isSafeInteger(n)&&n>=0,time=n=>Number.isFinite(n)&&n>=0;
- if(!d||d.version!==1||!Number.isInteger(d.dayKey)||d.dayKey< -1||!d.activities||ACTIVITIES.some(k=>!integer(d.activities[k]))||!Array.isArray(d.cases)||d.cases.length>20000)return false;
- const ids=new Set();
+ if(d?.version===1)return validLegacy(d);
+ if(!d||d.version!==2||!Number.isInteger(d.dayKey)||d.dayKey< -1||!Array.isArray(d.cases)||d.cases.length>20000)return false;
+ const ids=new Set(),days=new Set();
  for(const e of d.cases){
-  if(!e||typeof e.id!=='string'||!e.id||ids.has(e.id)||!EVENT_BY_KEY[e.key]||!STAGES.includes(e.stage)||!integer(e.seed)||e.seed>4294967295||![2,3,4].includes(e.firstHours)||!Number.isInteger(e.variant)||e.variant<0||e.variant>3||![e.createdAt,e.startedAt,e.deadlineAt,e.waitUntil,e.retryAt,e.trialAt].every(time)||!integer(e.mistakes)||!integer(e.trials)||!integer(e.reward)||e.reward<1||typeof e.guestTaken!=='boolean'||typeof e.notice!=='string'||e.notice.length>500||!integer(e.goal)||e.goal>2||!integer(e.activityStart)||e.activity!==null&&!ACTIVITIES.includes(e.activity))return false;
-  if(e.activity&&e.activityStart>d.activities[e.activity]||e.guestTaken&&e.stage!=='claimed'||e.activity&&e.goal<1||!e.activity&&e.goal!==0||!['new','expired'].includes(e.stage)&&e.deadlineAt!==e.startedAt+EVENT_DAY)return false;
+  const t=EVENT_BY_KEY[e?.key];
+  if(!t||typeof e.id!=='string'||!e.id||ids.has(e.id)||!integer(e.dayKey)||!integer(e.seed)||e.seed>4294967295||!STAGES.includes(e.stage)||![e.createdAt,e.startedAt,e.deadlineAt,e.stepStartedAt,e.waitUntil].every(integer)||!integer(e.reward)||e.reward<1||!integer(e.step)||e.step>=t.steps.length||typeof e.guest!=='boolean'||typeof e.rareGuest!=='boolean'||typeof e.guestTaken!=='boolean'||typeof e.legacy!=='boolean'||!Array.isArray(e.targetIds)||e.targetIds.length>48||new Set(e.targetIds).size!==e.targetIds.length||e.targetIds.some(id=>typeof id!=='string'||!id||id.length>120))return false;
+  if(!e.context||!['morning','day','evening','night'].includes(e.context.period)||![null,'clear','cloud','fog','rain','snow','storm'].includes(e.context.weather)||typeof e.context.region!=='string'||e.context.region.length>40||e.context.temperature!==null&&!Number.isFinite(e.context.temperature))return false;
+  if(e.rareGuest&&!e.guest||e.guestTaken&&(!e.guest||e.stage!=='claimed'))return false;
+  if(['ready','claimed'].includes(e.stage)&&e.step!==t.steps.length-1||e.stage==='step-ready'&&e.step===t.steps.length-1)return false;
+  if(!e.legacy){if(days.has(e.dayKey)||e.guest!==t.guest||e.rareGuest!==t.rareGuest)return false;days.add(e.dayKey);}
+  if(e.stage==='new'&&(e.startedAt!==0||e.deadlineAt!==0||e.stepStartedAt!==0||e.waitUntil!==0||e.step!==0))return false;
+  if(!['new','expired'].includes(e.stage)&&(e.deadlineAt!==e.startedAt+EVENT_DAY||e.waitUntil<e.stepStartedAt||e.stepStartedAt<e.startedAt||!e.legacy&&e.waitUntil!==e.stepStartedAt+t.steps[e.step].hours*EVENT_HOUR))return false;
+  if(!e.legacy&&e.startedAt&&e.waitUntil>e.deadlineAt)return false;
   ids.add(e.id);
- }
- return true;
+ }return true;
 }
 export {EVENT_CATALOG};

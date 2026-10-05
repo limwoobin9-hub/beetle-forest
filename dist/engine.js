@@ -1,4 +1,4 @@
-import {newDailyEvents,recordEventActivity,validDailyEvents,takeEventGuest} from './events.js';
+import {newDailyEvents,migrateDailyEvents,validDailyEvents,takeEventGuest,claimDailyEvent} from './events.js';
 import {PRODUCTS,LEVEL_XP,keeperLevel,compatibleFood,syncSupplies,shopAccess,isLarva,isAdultBedding,adultBeddingItems,adultBeddingCount} from './catalog.js';
 import {SPECIES,LOCATIONS,sizeRange,captureDifficulty} from './world.js';
 export {SPECIES,LOCATIONS,captureDifficulty};
@@ -26,7 +26,7 @@ export function newGame(now=Date.now()) {
   return {version:5,dailyEvents:newDailyEvents(),lines:[],auctions:[],settings:{realTime:false,realGrowth:false},clock:{anchorAt:now},totalBreedings:0,totalEmergences:0,traps:[],researchClaimed:[],memorials:[],specimenCases:[{id:'case-1',name:'표본 케이스 1'}],careAidDay:0,day:1,coins:350,xp:0,inventory:{banana:6,basic_mat:4},jelly:6,substrate:4,energy:5,bugs:[],broods:[],discoveries:[],captures:0,records:{},fight:null,expedition:null,log:[]};
 }
 export function migrateSave(state,now=Date.now()){
-  if(state.version===5){state.dailyEvents??=newDailyEvents();state.lines??=[];state.auctions??=[];migrateTraits(state);migrateClock(state,now);return state;}
+  if(state.version===5){migrateDailyEvents(state,now);state.lines??=[];state.auctions??=[];migrateTraits(state);migrateClock(state,now);return state;}
   if(![1,2,3,4].includes(state.version))return state;
   if(state.version===1){
   const defaults=state.bugs.filter(b=>b.source==='첫 친구');
@@ -52,7 +52,7 @@ export function migrateSave(state,now=Date.now()){
   if(state.version<4){state.settings={realTime:false,realGrowth:false};state.clock={anchorAt:now};state.broods.forEach(b=>b.growthMode='fast');state.bugs.forEach(b=>b.favorite=!!b.favorite);}
   state.memorials=[];state.specimenCases=[{id:'case-1',name:'표본 케이스 1'}];state.careAidDay=0;state.bugs.forEach(b=>b.criticalDays=0);
   if(state.expedition?.encounter)state.expedition.encounter.bug.criticalDays=0;
-  state.version=5;state.lines??=[];state.auctions??=[];migrateTraits(state);migrateClock(state,now);return state;
+  state.version=5;migrateDailyEvents(state,now);state.lines??=[];state.auctions??=[];migrateTraits(state);migrateClock(state,now);return state;
 }
 function migrateClock(state,now){
  if(state.clock.calendar)return;
@@ -82,7 +82,7 @@ export function care(state,id,kind,itemId){
   }else throw new Error('알 수 없는 돌봄입니다.');
   if(b.health>CRITICAL_HEALTH)b.criticalDays=0;
   if(b['xp_'+kind]!==state.day){gainXP(state,5);b['xp_'+kind]=state.day;}
-  recordEventActivity(state,'care');note(state,`${b.name} · ${product.name} 사용`);return b;
+  note(state,`${b.name} · ${product.name} 사용`);return b;
 }
 export function buy(state,id){
   const item=PRODUCTS[id];if(!item)throw new Error('상품을 선택하세요.');
@@ -125,7 +125,7 @@ export function finishCapture(state,accuracy){
   if(state.bugs.length+state.broods.length*3+auctionReserved(state)>=48)throw new Error('사육실 공간이 부족합니다.');
   e.attempts++;const {threshold,maxAttempts}=captureDifficulty(e.encounter);
   if(accuracy<threshold){e.encounter.alert=clamp(e.encounter.alert+23);e.encounter.speed*=1.16;if(e.attempts>=maxAttempts||e.encounter.alert>=90){state.expedition=null;note(state,'채집 종료 · 포획 실패');return {escaped:true};}return {missed:true};}
-  const bug=e.encounter.bug;state.bugs.push(bug);state.captures++;recordEventActivity(state,'capture');state.coins+=10;gainXP(state,24+SPECIES[bug.species].rarity*12);
+  const bug=e.encounter.bug;state.bugs.push(bug);state.captures++;state.coins+=10;gainXP(state,24+SPECIES[bug.species].rarity*12);
   if(!state.discoveries.includes(bug.species))state.discoveries.push(bug.species);
   const key=bug.species+'-'+bug.sex,record=bug.length>(state.records[key]||0);state.records[key]=Math.max(state.records[key]||0,bug.length);
   state.expedition=null;note(state,`${bug.name} ${sexName(bug.sex)} ${bug.length} mm 채집`);return {bug,record};
@@ -160,7 +160,7 @@ export function careBrood(state,id,itemId){
   if(item.endsWith('_800')&&broodStage(b)==='3령')throw new Error('3령은 1400 mL 이상 균사병을 사용하세요.');
   if(b.food>=100&&b.medium===item)throw new Error('먹이가 이미 신선합니다.');
   spend(state,item);b.food=100;b.medium=item;if(b.careXP!==state.day){gainXP(state,8);b.careXP=state.day;}
-  recordEventActivity(state,'brood');note(state,`${SPECIES[b.species].name} ${broodStage(b)} · ${PRODUCTS[item].name} 교체`);return b;
+  note(state,`${SPECIES[b.species].name} ${broodStage(b)} · ${PRODUCTS[item].name} 교체`);return b;
 }
 export function advanceDay(state){
   if(state.settings?.realTime)throw new Error('현실 시간 연동 중에는 한국 시각 자정에 자동으로 진행됩니다.');
@@ -396,3 +396,5 @@ export function rename(state,id,name){
 }
 
 export function collectDailyGuest(state,id,now=Date.now()){return takeEventGuest(state,id,createBug,now);}
+
+export function finishDailyMission(state,id,now=Date.now()){const result=claimDailyEvent(state,id,now);let bug=null;if(result.guest&&state.bugs.length+state.broods.length*3+auctionReserved(state)<48)bug=takeEventGuest(state,id,createBug,now);return {...result,bug,pendingGuest:result.guest&&!bug};}
