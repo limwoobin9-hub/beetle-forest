@@ -6,11 +6,28 @@ export const WORLDS=[
 ];
 export const LEGACY_SAVE='little-forest-save-v1',LEGACY_UI='little-forest-ui-v1';
 const MIGRATED='little-forest-worlds-migrated-v1';
+const TRANSACTION='little-forest-world-exchange-transaction-v1';
+export function recoverWorldTransaction(storage){
+ const raw=storage.getItem(TRANSACTION);if(!raw)return;
+ const backup=JSON.parse(raw);
+ for(const [key,value] of backup)value===null?storage.removeItem(key):storage.setItem(key,value);
+ storage.removeItem(TRANSACTION);
+}
+export function saveWorldsTogether(storage,worlds){
+ recoverWorldTransaction(storage);
+ const entries=[];
+ for(const w of WORLDS){const {state,ui}=worlds[w.id],keys=worldKeys(w.id);if(!validateSave(state)||state.settings.realTime!==w.realTime)throw new Error('세계의 저장 기록이 맞지 않습니다.');entries.push([keys.save,JSON.stringify(state)],[keys.ui,JSON.stringify(ui)]);}
+ const backup=entries.map(([key])=>[key,storage.getItem(key)]);
+ storage.setItem(TRANSACTION,JSON.stringify(backup));
+ try{for(const [key,value] of entries)storage.setItem(key,value);storage.removeItem(TRANSACTION);}
+ catch(error){try{recoverWorldTransaction(storage);}catch{}throw error;}
+}
 export function getWorld(id){return WORLDS.find(w=>w.id===id);}
 export function worldKeys(id){if(!getWorld(id))throw new Error('알 수 없는 세계입니다.');return {save:`little-forest-world-${id}-save-v1`,ui:`little-forest-world-${id}-ui-v1`};}
 function parseSave(raw){const state=JSON.parse(raw);if(!validateSave(state))throw new Error('invalid save');return state;}
 
 export function initializeWorlds(storage,now=Date.now()){
+  recoverWorldTransaction(storage);
   if(storage.getItem(MIGRATED))return null;
   const raw=storage.getItem(LEGACY_SAVE);
   let destination=null;
@@ -32,6 +49,7 @@ export function initializeWorlds(storage,now=Date.now()){
 }
 
 export function loadWorld(storage,id,now=Date.now()){
+  recoverWorldTransaction(storage);
   const world=getWorld(id),keys=worldKeys(id),raw=storage.getItem(keys.save);
   let state,notice='';
   if(raw){try{state=migrateSave(parseSave(raw),now);}catch{storage.setItem(keys.save+'-recovery',raw);notice='저장 데이터를 읽지 못했어요. 기존 기록은 복구용으로 보관했어요.';}}
@@ -46,6 +64,7 @@ export function loadWorld(storage,id,now=Date.now()){
 }
 
 export function saveWorld(storage,id,state,ui){
+  recoverWorldTransaction(storage);
   const world=getWorld(id),keys=worldKeys(id);
   if(!validateSave(state)||state.settings.realTime!==world.realTime)throw new Error('세계의 시간 방식과 저장 기록이 맞지 않습니다.');
   storage.setItem(keys.save,JSON.stringify(state));
@@ -53,6 +72,7 @@ export function saveWorld(storage,id,state,ui){
 }
 
 export function worldSummary(storage,id){
+  recoverWorldTransaction(storage);
   const raw=storage.getItem(worldKeys(id).save);
   if(!raw)return null;
   try{const state=parseSave(raw);return {day:state.day,insects:state.bugs.length,broods:state.broods.length};}catch{return {damaged:true};}

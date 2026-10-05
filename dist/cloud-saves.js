@@ -1,4 +1,4 @@
-import {WORLDS,worldKeys} from './worlds.js';
+import {WORLDS,worldKeys,saveWorldsTogether} from './worlds.js';
 import {validateSave} from './engine.js';
 export function accountStorage(storage,userId){
  const prefix=`little-forest-account-${userId}:`;
@@ -53,6 +53,19 @@ export class CloudSaves{
    this.writeMeta(world,this.pending.has(world));
   }
   this.setStatus('saved');return true;
+ }
+ async exchange(worlds){
+  if(!await this.flush())throw new Error('계정 저장을 마친 뒤 교환할 수 있어요. 저장 상태를 확인해 주세요.');
+  this.setStatus('saving');
+  let result;
+  try{result=await this.client.rpc('beetle_exchange_worlds',{p_real:worlds.real.state,p_real_ui:worlds.real.ui,p_real_revision:this.revisions.get('real')||0,p_virtual:worlds.virtual.state,p_virtual_ui:worlds.virtual.ui,p_virtual_revision:this.revisions.get('virtual')||0});}
+  catch{this.setStatus('conflict');throw new Error('교환 결과를 확인하지 못했어요. 계정 기록을 다시 불러와 주세요.');}
+  const {data,error}=result;
+  if(error){this.setStatus('conflict');throw new Error(error.message?.includes('FOREST_COOLDOWN')?'다음 교환까지 현실 시간 7일을 기다려야 해요. 계정 기록을 다시 불러와 주세요.':error.message?.includes('FOREST_CONFLICT')?'다른 기기의 기록이 바뀌었어요. 계정 기록을 다시 불러와 주세요.':'교환 결과를 확인하지 못했어요. 계정 기록을 다시 불러와 주세요.');}
+  for(const w of WORLDS){worlds[w.id].state.worldExchange={lastAt:Number(data.lastAt)};this.revisions.set(w.id,Number(data[w.id]));}
+  try{saveWorldsTogether(this.storage,worlds);for(const w of WORLDS)this.writeMeta(w.id,false);}
+  catch{try{await this.load({discardPending:true});}catch{this.setStatus('conflict');throw new Error('서버에서 교환했어요. 계정 기록을 다시 불러와 교환 결과를 확인해 주세요.');}}
+  this.setStatus('saved');return worlds;
  }
  stop(){clearTimeout(this.timer);}
 }

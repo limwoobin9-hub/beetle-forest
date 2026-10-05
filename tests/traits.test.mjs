@@ -45,27 +45,27 @@ test('new mutations use absolute trait rates without renormalizing the unoccupie
  assert.deepEqual(inheritTraits('rhino',parents,values(.1,.0005)),['rhino_red','rhino_white_eye']);
  const random=stableTraitRandom('filtered-mutations'),n=250000;let white=0,red=0,body=0;
  for(let i=0;i<n;i++){const traits=inheritTraits('rhino',parents,random);white+=traits.includes('rhino_white_eye');red+=traits.includes('rhino_red_eye');body+=traits.includes('rhino_red');assert.ok(validTraits('rhino',traits));}
- assert.ok(Math.abs(white/n-.001)<.0004);assert.ok(Math.abs(red/n-.0005)<.0003);assert.ok(Math.abs(body/n-.15)<.01);
+ assert.ok(Math.abs(white/n-.001)<.0004);assert.ok(Math.abs(red/n-.0005)<.0003);assert.ok(Math.abs(body/n-.30)<.01);
 });
 test('single-parent and matched-parent inheritance match the displayed exact odds',()=>{
  const single=pair(['flat_long'],[]),matched=pair(['flat_long'],['flat_long']);
- assert.deepEqual(inheritTraits('flat',single,values(.149)),['flat_long']);
- assert.deepEqual(inheritTraits('flat',single,values(.15)),[]);
+ assert.deepEqual(inheritTraits('flat',single,values(.299)),['flat_long']);
+ assert.deepEqual(inheritTraits('flat',single,values(.30)),[]);
  assert.deepEqual(inheritTraits('flat',matched,values(.749)),['flat_long']);
  assert.deepEqual(inheritTraits('flat',matched,values(.75)),[]);
  assert.equal(inheritanceChances('flat',single)[0].chance,TRAIT_RATES.single);
  assert.equal(inheritanceChances('flat',matched)[0].chance,TRAIT_RATES.matched);
- for(const [parents,target] of [[single,.15],[matched,.75]]){
+ for(const [parents,target] of [[single,.30],[matched,.75]]){
   const random=stableTraitRandom(String(target)),n=30000;let count=0;
   for(let i=0;i<n;i++)count+=inheritTraits('flat',parents,random).includes('flat_long');
   assert.ok(Math.abs(count/n-target)<.01,`${count/n} vs ${target}`);
  }
 });
-test('conflicting jaw and eye traits cannot occur together; different parents each contribute 15%',()=>{
+test('conflicting jaw and eye traits cannot occur together; different parents each contribute 30%',()=>{
  const parents=pair(['flat_long'],['flat_short']);
  assert.deepEqual(inheritTraits('flat',parents,values(.1)),['flat_long']);
- assert.deepEqual(inheritTraits('flat',parents,values(.2)),['flat_short']);
- assert.deepEqual(inheritTraits('flat',parents,values(.3)),[]);
+ assert.deepEqual(inheritTraits('flat',parents,values(.3)),['flat_short']);
+ assert.deepEqual(inheritTraits('flat',parents,values(.6)),[]);
  for(let i=0;i<1000;i++){const child=inheritTraits('flat',parents,stableTraitRandom(String(i)));assert.ok(child.length<=1);}
  assert.equal(validTraits('king',['king_red_eye','king_white_eye']),false);
  assert.equal(validTraits('flat',['flat_long','flat_short']),false);
@@ -109,3 +109,4 @@ test('traits remain on archived individuals after death',()=>{
  for(let i=0;i<3;i++)advanceDay(s);
  assert.deepEqual(s.memorials[0].bug.traits,['rhino_red']);assert.equal(validateSave(s),true);
 });
+

@@ -79,7 +79,7 @@ export function lineMembers(state,line){
   const living=state.bugs.find(bug=>bug.id===b.id),memorial=state.memorials?.find(m=>m.id===b.id);
   const listing=(state.auctions||[]).find(a=>a.status==='active'&&(a.kind==='adult'?a.asset.id:a.kind==='specimen'?a.asset.bug.id:null)===b.id);
   const current=living||memorial?.bug||(listing?.kind==='adult'?listing.asset:null);
-  return {...b,name:current?.name||b.name,status:current&&current.lineage?.lineId!==line.id?'다른 라인으로 이동':listing?'경매 출품 중':living?'사육 중':memorial?.status==='mounted'?'표본 보관':memorial?'보관·작업 중':b.sale?'경매 낙찰':'방생',alive:!!living&&current.lineage?.lineId===line.id};
+  return {...b,name:current?.name||b.name,status:current&&current.lineage?.lineId!==line.id?'다른 라인으로 이동':listing?'경매 출품 중':living?'사육 중':memorial?.status==='mounted'?'표본 보관':memorial?'보관·작업 중':b.sale?'경매 낙찰':b.worldTransfer?`${b.worldTransfer.to==='real'?'현실':'상상의'} 숲으로 교환`:'방생',alive:!!living&&current.lineage?.lineId===line.id};
  });
 }
 export function lineStats(state,line){

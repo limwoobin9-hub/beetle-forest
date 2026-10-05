@@ -1,6 +1,6 @@
 // Rates are game settings informed by breeder records, not measured wild odds.
 // spawnRate is the absolute probability per individual of this species.
-export const TRAIT_RATES=Object.freeze({single:.15,matched:.75});
+export const TRAIT_RATES=Object.freeze({single:.30,matched:.75});
 export const TRAITS=Object.freeze({
  king_curved:{species:'king',group:'jaw',name:'곡치',description:'두께 변화 없이 안쪽으로 휘어진 큰턱 혈통',maleOnly:true,spawnRate:.01},
  king_white_eye:{species:'king',group:'eye',name:'화이트아이',description:'흰색 눈',spawnRate:.001},
@@ -61,7 +61,7 @@ export function inheritTraits(species,parents,random=Math.random){
   for(const t of chances.filter(t=>t.group===group)){ticket-=t.chance;if(ticket<0){result.push(t.id);break;}}
  }
  // Mutations use only a group neither parent holds; a failed inheritance
- // cannot be rerolled, so the displayed 15% and 75% remain exact.
+ // cannot be rerolled, so the displayed 30% and 75% remain exact.
  const pool=speciesTraits(species).filter(t=>!groups.includes(t.group));
  if(result.length<2&&pool.length)result.push(...rollFromPool(pool,random));
  return result;
@@ -77,3 +77,4 @@ export function migrateTraits(state){
  state.bugs.forEach(assign);state.memorials?.forEach(m=>assign(m.bug));assign(state.expedition?.encounter?.bug);assign(state.fight?.rival);
  for(const brood of state.broods){brood.parents.forEach(assign);brood.children.forEach((child,i)=>{if(child.traits===undefined)child.traits=inheritTraits(brood.species,brood.parents,stableTraitRandom(`${brood.id}:${i}`));});}
 }
+
