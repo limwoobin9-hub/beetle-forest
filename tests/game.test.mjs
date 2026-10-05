@@ -56,8 +56,10 @@ test('all species pass through egg, three instars, pupa and adult',()=>{
    if(['1령','2령','3령'].includes(broodStage(b))&&b.food<100)careBrood(s,b.id,'basic_mat');
    advanceDay(s);if(s.broods.length)seen.add(broodStage(b));valid(s);
   }
-  assert.deepEqual([...seen],['알','1령','2령','3령','번데기']);assert.equal(s.broods.length,0);assert.equal(s.bugs.length,3);assert.equal(s.memorials.length,2);
-  assert.ok(s.bugs.every(b=>b.name===SPECIES[species].name&&b.parents.length===2));
+  const offspring=s.bugs.filter(child=>child.parents);
+  assert.deepEqual([...seen],['알','1령','2령','3령','번데기']);assert.equal(s.broods.length,0);assert.equal(offspring.length,3);
+  assert.ok(offspring.every(b=>b.name===SPECIES[species].name&&b.parents.length===2));
+  assert.ok([m,f].every(parent=>s.bugs.some(b=>b.id===parent.id)||s.memorials.some(m=>m.id===parent.id)));
  }
 });
 test('larval food checks species, instar and nutritional suitability',()=>{
@@ -220,4 +222,3 @@ test('collection sorting uses numeric size and stamina in both directions withou
  }
  assert.deepEqual(bugs.map(b=>b.id),order);assert.equal(collectionView(bugs,{sort:'stamina-asc'})[0],bugs[2]);assert.equal(collectionView(bugs,{sort:'stamina-desc'})[0],bugs[1]);
 });
-

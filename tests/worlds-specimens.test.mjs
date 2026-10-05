@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {newGame,createBug,migrateSave,validateSave,advanceDay,care,setTimeOptions,syncRealTime,prepareSpecimen,workSpecimen,storeSpecimen,addSpecimenCase,careAidStatus,claimCareAid} from '../dist/engine.js';
+import {CRITICAL_DAYS,newGame,createBug,migrateSave,validateSave,advanceDay,care,setTimeOptions,syncRealTime,prepareSpecimen,workSpecimen,storeSpecimen,addSpecimenCase,careAidStatus,claimCareAid} from '../dist/engine.js';
 import {syncSupplies} from '../dist/catalog.js';
 import {DAY_MS} from '../dist/time.js';
 import {PARTS,PIN_POINT} from '../dist/specimens.js';
@@ -8,7 +8,7 @@ import {LEGACY_SAVE,LEGACY_UI,initializeWorlds,worldKeys,loadWorld,saveWorld,wor
 const NOW=1800000000000;
 const storage=()=>{const data=new Map();return {getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,String(v))};};
 const valid=s=>assert.equal(validateSave(JSON.parse(JSON.stringify(s))),true);
-function dead(s){const b=createBug('king','male',.7,s.day);b.health=30;b.hunger=0;b.hygiene=0;s.bugs.push(b);s.captures++;s.discoveries=['king'];s.records['king-male']=b.length;for(let i=0;i<3;i++)advanceDay(s);return s.memorials.find(m=>m.id===b.id);}
+function dead(s){const b=createBug('king','male',.7,s.day);b.health=30;b.hunger=0;b.hygiene=0;s.bugs.push(b);s.captures++;s.discoveries=['king'];s.records['king-male']=b.length;for(let i=0;i<CRITICAL_DAYS;i++)advanceDay(s);return s.memorials.find(m=>m.id===b.id);}
 function poseAndDry(s,m){
  prepareSpecimen(s,m.id);valid(s);
  for(const [task,point] of [['water',{x:50,y:76}],['platform',{x:50,y:55}],['body',{x:50,y:45}],['lid',{x:50,y:25}]]){workSpecimen(s,m.id,task,point);valid(s);}
@@ -37,13 +37,34 @@ test('migration never overwrites an existing world and damaged saves are retaine
  const store=storage(),original=newGame(NOW);original.coins=999;saveWorld(store,'virtual',original,{});store.setItem(LEGACY_SAVE,JSON.stringify(newGame(NOW)));initializeWorlds(store,NOW);
  assert.equal(loadWorld(store,'virtual',NOW).state.coins,999);store.setItem(worldKeys('real').save,'broken');assert.equal(worldSummary(store,'real').damaged,true);const fresh=loadWorld(store,'real',NOW);assert.equal(store.getItem(worldKeys('real').save+'-recovery'),'broken');assert.equal(fresh.state.settings.realTime,true);assert.equal(loadWorld(store,'virtual',NOW).state.coins,999);
 });
-test('death requires three consecutive critical days and preserves individual and collection history',()=>{
+test('death requires seven consecutive critical days and preserves individual and collection history',()=>{
+ assert.equal(CRITICAL_DAYS,7);
  const s=newGame(NOW),b=createBug('flat','female',.5,1);b.health=30;b.hunger=0;b.hygiene=0;b.favorite=true;s.bugs.push(b);s.captures=1;s.discoveries=['flat'];s.records['flat-female']=b.length;
- advanceDay(s);assert.equal(b.criticalDays,1);assert.equal(s.bugs.length,1);advanceDay(s);assert.equal(b.criticalDays,2);assert.equal(s.bugs.length,1);const events=advanceDay(s);assert.equal(s.bugs.length,0);assert.equal(s.memorials.length,1);assert.equal(s.memorials[0].bug.id,b.id);assert.equal(s.memorials[0].bug.favorite,true);assert.equal(s.memorials[0].status,'stored');assert.ok(events.some(e=>e.includes('사망')));assert.equal(s.captures,1);assert.equal(s.records['flat-female'],b.length);valid(s);
+ advanceDay(s);assert.equal(b.criticalDays,1);assert.equal(s.bugs.length,1);advanceDay(s);assert.equal(b.criticalDays,2);assert.equal(s.bugs.length,1);for(let i=2;i<CRITICAL_DAYS-1;i++){advanceDay(s);assert.equal(s.bugs.length,1);valid(s);}const events=advanceDay(s);assert.equal(s.bugs.length,0);assert.equal(s.memorials.length,1);assert.equal(s.memorials[0].bug.id,b.id);assert.equal(s.memorials[0].bug.favorite,true);assert.equal(s.memorials[0].status,'stored');assert.ok(events.some(e=>e.includes('사망')));assert.equal(s.captures,1);assert.equal(s.records['flat-female'],b.length);valid(s);
 });
 test('recovering health above the threshold breaks the critical-day streak',()=>{
  const s=newGame(NOW),b=createBug('king','male',.5,1);b.health=20;b.hunger=0;b.hygiene=0;s.bugs.push(b);advanceDay(s);assert.equal(b.criticalDays,1);care(s,b.id,'jelly');care(s,b.id,'clean');assert.ok(b.health>20);assert.equal(b.criticalDays,0);advanceDay(s);assert.equal(b.criticalDays,0);
  b.health=20;b.hunger=0;advanceDay(s);assert.equal(b.criticalDays,1);advanceDay(s);assert.equal(s.bugs.length,1);valid(s);
+});
+test('existing two-day warning keeps its count and gets the longer rescue window on reload',()=>{
+ const store=storage(),s=newGame(NOW),b=createBug('king','male',.5,1);s.bugs.push(b);b.health=1;b.hunger=0;b.hygiene=0;b.criticalDays=2;s.coins=10000;
+ saveWorld(store,'virtual',s,{});const restored=loadWorld(store,'virtual',NOW).state;
+ assert.equal(restored.bugs[0].criticalDays,2);assert.equal(restored.coins,10000);
+ for(let i=0;i<4;i++){advanceDay(restored);assert.equal(restored.bugs.length,1);valid(restored);}
+ assert.equal(restored.bugs[0].criticalDays,6);care(restored,b.id,'jelly');care(restored,b.id,'clean');care(restored,b.id,'jelly');
+ assert.ok(restored.bugs[0].health>20);assert.equal(restored.bugs[0].criticalDays,0);advanceDay(restored);assert.equal(restored.bugs.length,1);valid(restored);
+});
+test('stored and completed specimens from the old three-day rule stay valid without changing savings',()=>{
+ const store=storage(),s=newGame(NOW),m=dead(s);m.bug.criticalDays=3;s.coins=10000;valid(s);saveWorld(store,'virtual',s,{});
+ const restored=loadWorld(store,'virtual',NOW).state;assert.equal(restored.coins,10000);assert.equal(restored.memorials[0].bug.id,m.id);assert.equal(restored.memorials[0].bug.criticalDays,3);
+ finishWork(restored,restored.memorials[0]);storeSpecimen(restored,m.id,'case-1',1);valid(restored);
+ saveWorld(store,'virtual',restored,{});const mounted=loadWorld(store,'virtual',NOW).state;assert.equal(mounted.memorials[0].status,'mounted');assert.equal(mounted.memorials[0].bug.criticalDays,3);
+});
+test('offline elapsed days use seven-day mortality once and do not duplicate memorials on reload',()=>{
+ const s=newGame(NOW),b=createBug('king','male',.5,1);s.bugs.push(b);b.health=1;b.hunger=0;b.hygiene=0;setTimeOptions(s,{realTime:true,realGrowth:false},NOW);
+ syncRealTime(s,NOW+6*DAY_MS);assert.equal(s.bugs.length,1);assert.equal(b.criticalDays,6);valid(s);
+ syncRealTime(s,NOW+7*DAY_MS);assert.equal(s.bugs.length,0);assert.equal(s.memorials.length,1);assert.equal(s.memorials[0].bug.criticalDays,7);
+ const restored=JSON.parse(JSON.stringify(s));assert.equal(syncRealTime(restored,NOW+7*DAY_MS).days,0);assert.equal(restored.memorials.length,1);valid(restored);
 });
 test('care aid covers needy insects once per day without currency or XP rewards',()=>{
  const s=newGame(NOW);for(let i=0;i<2;i++){const b=createBug('king','male',.4,1);b.hunger=0;b.hygiene=0;s.bugs.push(b);}s.coins=0;s.inventory.banana=0;s.inventory.basic_mat=0;syncSupplies(s);

@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {SPECIES,newGame,createBug,breed,advanceDay,validateSave,migrateSave} from '../dist/engine.js';
+import {CRITICAL_DAYS,SPECIES,newGame,createBug,breed,advanceDay,validateSave,migrateSave} from '../dist/engine.js';
 import {TRAITS,TRAIT_RATES,speciesTraits,rollTraits,inheritTraits,inheritanceChances,validTraits,traitLabel,stableTraitRandom,naturalTraitRate,traitRateText,traitRarity,traitPremium} from '../dist/traits.js';
 const values=(...list)=>()=>list.shift()??.99;
 const bug=(sp,sex,traits=[])=>createBug(sp,sex,.7,1,'테스트',null,1,null,{traits});
@@ -106,7 +106,7 @@ test('malformed, cross-species and conflicting saved traits are rejected everywh
 });
 test('traits remain on archived individuals after death',()=>{
  const s=newGame(),b=bug('rhino','female',['rhino_red']);b.health=0;b.hunger=0;b.hygiene=0;s.bugs.push(b);
- for(let i=0;i<3;i++)advanceDay(s);
+ for(let i=0;i<CRITICAL_DAYS;i++)advanceDay(s);
  assert.deepEqual(s.memorials[0].bug.traits,['rhino_red']);assert.equal(validateSave(s),true);
 });
 

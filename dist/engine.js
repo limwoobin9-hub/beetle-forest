@@ -12,7 +12,8 @@ import {auctionReserved,auctionNurseries,syncAuctions,validAuctions} from './auc
 import {snapshotBug,offspringLineage,checkLineCapacity,recordLineBrood,recordLineEmergence,validLines,validLineage} from './lines.js';
 export const clamp = (v, min = 0, max = 100) => Math.max(min, Math.min(max, v));
 export const round = v => Math.round(v * 10) / 10;
-export const CRITICAL_HEALTH=20,CRITICAL_DAYS=3,SPECIMEN_CASE_COST=80;
+export const CRITICAL_HEALTH=20,CRITICAL_DAYS=7,SPECIMEN_CASE_COST=80;
+export const DAILY_SUPPORT_RULES=Object.freeze({base:15,adult:2,offspring:1,healthy:1,cap:80});
 const uuid = () => typeof crypto.randomUUID==='function'?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
 export function createBug(species, sex, genetic, day, source = '채집', parents = null, quality = 1, rearing = null, {random=Math.random,traits} = {}) {
   const range = sizeRange(species,sex,!!parents);
@@ -172,7 +173,9 @@ export function advanceDay(state){
 export function dailySupport(state){
  const adults=state.bugs.length,offspring=state.broods.reduce((n,b)=>n+b.children.length,0);
  const healthy=state.bugs.filter(b=>b.health>=75&&b.hunger>=40).length;
- return {base:35,adults,offspring,healthy,adultSupport:adults*6,offspringSupport:offspring*3,careBonus:healthy*4,total:35+adults*6+offspring*3+healthy*4};
+ const {base,adult,offspring:young,healthy:bonus,cap}=DAILY_SUPPORT_RULES;
+ const adultSupport=adults*adult,offspringSupport=offspring*young,careBonus=healthy*bonus;
+ return {base,adults,offspring,healthy,adultSupport,offspringSupport,careBonus,total:Math.min(cap,base+adultSupport+offspringSupport+careBonus)};
 }
 function applyDay(state){
   state.fight=null;
@@ -224,9 +227,9 @@ export function syncRealTime(state,now=Date.now()){
  // After every brood emerged and conditions settled, empty days need no long loop.
  if(rest){
   const before=state.day,beforeXP=state.xp,oldLevel=keeperLevel(state),first=Math.max(1,rest-39),levels=new Map();
-  state.day+=rest;state.coins+=35*rest;state.xp+=4*rest;state.energy=5;
+  state.day+=rest;state.coins+=DAILY_SUPPORT_RULES.base*rest;state.xp+=4*rest;state.energy=5;
   for(let level=oldLevel+1;level<=keeperLevel(state);level++){const offset=Math.ceil((LEVEL_XP[level-1]-beforeXP)/4);if(offset>=first)levels.set(offset,level);}
-  for(let i=first;i<=rest;i++){if(levels.has(i))note(state,`사육 레벨 ${levels.get(i)} 도달 · 상점 개방 조건 확인`,before+i);note(state,`${before+i}일째 · 지원금 35 잎사귀`,before+i);}
+  for(let i=first;i<=rest;i++){if(levels.has(i))note(state,`사육 레벨 ${levels.get(i)} 도달 · 상점 개방 조건 확인`,before+i);note(state,`${before+i}일째 · 지원금 ${DAILY_SUPPORT_RULES.base} 잎사귀`,before+i);}
  }
  state.clock.anchorAt=state.clock.calendar?midnightAt(now):state.clock.anchorAt+days*DAY_MS;
  return {days,events,...auctionMeta};
@@ -360,7 +363,8 @@ export function validateSave(s){
    if(!Array.isArray(s.memorials)||!Number.isInteger(s.careAidDay)||!finite(s.careAidDay,0,s.day)||!Array.isArray(s.specimenCases)||!s.specimenCases.length||s.specimenCases.some(c=>!c||typeof c.id!=='string'||typeof c.name!=='string'||!c.name||c.name.length>40)||new Set(s.specimenCases.map(c=>c.id)).size!==s.specimenCases.length)return false;
    const archivedIds=new Set(),occupied=new Set();
    for(const m of s.memorials){
-    if(!m||typeof m.id!=='string'||m.id!==m.bug?.id||ids.has(m.id)||archivedIds.has(m.id)||!validBug(m.bug)||m.bug.criticalDays!==CRITICAL_DAYS||m.bug.health>CRITICAL_HEALTH||!Number.isInteger(m.diedDay)||!finite(m.diedDay,m.bug.born,s.day)||!['stored','working','relaxing','drying','casing','mounted'].includes(m.status)||typeof m.caption!=='string'||m.caption.length>80)return false;
+    // Preserve specimens that died under the former three-day rule.
+    if(!m||typeof m.id!=='string'||m.id!==m.bug?.id||ids.has(m.id)||archivedIds.has(m.id)||!validBug(m.bug)||![3,CRITICAL_DAYS].includes(m.bug.criticalDays)||m.bug.health>CRITICAL_HEALTH||!Number.isInteger(m.diedDay)||!finite(m.diedDay,m.bug.born,s.day)||!['stored','working','relaxing','drying','casing','mounted'].includes(m.status)||typeof m.caption!=='string'||m.caption.length>80)return false;
     archivedIds.add(m.id);
     if(m.status==='stored'){if(m.work!==null||m.preparedDay!==null||m.readyDay!==null)return false;}
     else {

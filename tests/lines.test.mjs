@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {SPECIES,newGame,createBug,breed,advanceDay,validateSave,migrateSave,release} from '../dist/engine.js';
+import {CRITICAL_DAYS,SPECIES,newGame,createBug,breed,advanceDay,validateSave,migrateSave,release} from '../dist/engine.js';
 import {createLine,renameLine,archiveLine,lineStats,lineageText,offspringLineage,snapshotBug} from '../dist/lines.js';
 import {worldKeys,saveWorld,loadWorld} from '../dist/worlds.js';
 const bug=(s,sex,parents=null,day=1)=>createBug(s,sex,.7,day,parents?'번식':'채집',parents,1,null,{traits:[]});
@@ -45,7 +45,7 @@ test('reassigning founders preserves previous pending broods, origins and histor
 });
 test('renaming and archiving preserve line IDs; release and death retain family records',()=>{
  const {s,m,f}=setup(),line=createLine(s,m.id,f.id,'원래');breed(s,m.id,f.id,()=>.5);grow(s);renameLine(s,line.id,'이름 변경');archiveLine(s,line.id);assert.equal(lineageText(s,m),'이름 변경 · P');release(s,m.id);assert.equal(lineStats(s,line).members.find(b=>b.id===m.id).status,'방생');
- f.health=20;f.hunger=0;f.hygiene=0;for(let i=0;i<3;i++)advanceDay(s);assert.ok(s.memorials.find(m=>m.id===f.id));assert.ok(lineStats(s,line).members.find(b=>b.id===f.id).status.includes('보관'));archiveLine(s,line.id);assert.equal(line.archived,false);valid(s);
+ f.health=20;f.hunger=0;f.hygiene=0;for(let i=0;i<CRITICAL_DAYS;i++)advanceDay(s);assert.ok(s.memorials.find(m=>m.id===f.id));assert.ok(lineStats(s,line).members.find(b=>b.id===f.id).status.includes('보관'));archiveLine(s,line.id);assert.equal(line.archived,false);valid(s);
 });
 test('malformed and cross-species lineage records fail validation without throwing',()=>{
  const {s,m,f}=setup();createLine(s,m.id,f.id,'A');breed(s,m.id,f.id,()=>.5);
@@ -56,3 +56,4 @@ test('legacy saves remain valid and line registries stay isolated between worlds
  const {s,m,f}=setup();delete s.lines;valid(s);migrateSave(s);assert.deepEqual(s.lines,[]);createLine(s,m.id,f.id,'상상 전용');
  const data=new Map(),store={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)};saveWorld(store,'virtual',s,{});assert.equal(loadWorld(store,'virtual').state.lines.length,1);assert.equal(loadWorld(store,'real').state.lines.length,0);assert.ok(store.getItem(worldKeys('virtual').save));
 });
+

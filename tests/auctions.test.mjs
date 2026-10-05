@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {SPECIES,newGame,createBug,breed,advanceDay,validateSave,migrateSave,syncRealTime,setTimeOptions,prepareSpecimen,workSpecimen,storeSpecimen,startExpedition} from '../dist/engine.js';
+import {CRITICAL_DAYS,SPECIES,newGame,createBug,breed,advanceDay,validateSave,migrateSave,syncRealTime,setTimeOptions,prepareSpecimen,workSpecimen,storeSpecimen,startExpedition} from '../dist/engine.js';
 import {marketValue,listAuction,syncAuctions,cancelAuction,marketPlan,auctionReserved,auctionNurseries,auctionCandidates,MINUTE} from '../dist/auctions.js';
 import {createLine,lineStats} from '../dist/lines.js';
 import {PARTS,PIN_POINT} from '../dist/specimens.js';
@@ -12,7 +12,7 @@ function stock(){const s=newGame(NOW),m=bug(),f=bug('flat','female');s.bugs.push
 const valid=s=>assert.equal(validateSave(JSON.parse(JSON.stringify(s))),true);
 function guaranteed(lot){for(let i=0;i<100;i++){lot.id=`known-good-${i}`;if(marketPlan(lot).length>=2)return lot;}throw new Error('No deterministic bidder fixture');}
 function larvae(s,m,f){breed(s,m.id,f.id,()=>.5);for(let i=0;i<2;i++){for(const b of s.bugs){b.hunger=100;b.hygiene=100;}advanceDay(s);}return s.broods[0];}
-function specimen(s,b){b.health=20;b.hunger=0;b.hygiene=0;for(let i=0;i<3;i++)advanceDay(s);const m=s.memorials.find(m=>m.id===b.id);prepareSpecimen(s,m.id);for(const [task,p] of [['water',{x:50,y:76}],['platform',{x:50,y:55}],['body',{x:50,y:45}],['lid',{x:50,y:25}]])workSpecimen(s,m.id,task,p);advanceDay(s);workSpecimen(s,m.id,'pin',PIN_POINT);workSpecimen(s,m.id,'height',null,{height:25});for(const p of PARTS){workSpecimen(s,m.id,'pose',p.target,{part:p.key});workSpecimen(s,m.id,'support',{x:p.target.x+(p.key[0]==='l'?-3:3),y:p.target.y+2},{part:p.key});}workSpecimen(s,m.id,'board',{x:50,y:91});for(let i=0;i<3;i++)advanceDay(s);for(const p of PARTS)workSpecimen(s,m.id,'remove-support',{x:91,y:91},{part:p.key});workSpecimen(s,m.id,'label',{x:50,y:91},{collector:'숲지기',caption:'옥션용 표본'});storeSpecimen(s,m.id,'case-1',2);return m;}
+function specimen(s,b){b.health=20;b.hunger=0;b.hygiene=0;for(let i=0;i<CRITICAL_DAYS;i++)advanceDay(s);const m=s.memorials.find(m=>m.id===b.id);prepareSpecimen(s,m.id);for(const [task,p] of [['water',{x:50,y:76}],['platform',{x:50,y:55}],['body',{x:50,y:45}],['lid',{x:50,y:25}]])workSpecimen(s,m.id,task,p);advanceDay(s);workSpecimen(s,m.id,'pin',PIN_POINT);workSpecimen(s,m.id,'height',null,{height:25});for(const p of PARTS){workSpecimen(s,m.id,'pose',p.target,{part:p.key});workSpecimen(s,m.id,'support',{x:p.target.x+(p.key[0]==='l'?-3:3),y:p.target.y+2},{part:p.key});}workSpecimen(s,m.id,'board',{x:50,y:91});for(let i=0;i<3;i++)advanceDay(s);for(const p of PARTS)workSpecimen(s,m.id,'remove-support',{x:91,y:91},{part:p.key});workSpecimen(s,m.id,'label',{x:50,y:91},{collector:'숲지기',caption:'옥션용 표본'});storeSpecimen(s,m.id,'case-1',2);return m;}
 test('all species and both sexes value large and rare individuals above small basic stock',()=>{
  const traits={king:'king_white_eye',flat:'flat_long',rhino:'rhino_red',redleg:'redleg_crimson',dauria:'dauria_amber',twospot:'twospot_gold',saw:'saw_red',little:'little_white_eye',stag:'stag_gold'};
  for(const species of Object.keys(SPECIES))for(const sex of ['male','female']){
@@ -108,3 +108,4 @@ test('malformed auction snapshots, times, amounts, buyers and reserved duplicate
  for(const edit of edits){const broken=structuredClone(s);edit(broken);assert.equal(validateSave(broken),false);}
  const legacy=newGame(NOW);delete legacy.auctions;valid(legacy);migrateSave(legacy);assert.deepEqual(legacy.auctions,[]);
 });
+

@@ -1,14 +1,14 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {newGame,createBug,breed,advanceDay,dailySupport,releaseMany,makeOpponent,validateSave,setTimeOptions,syncRealTime} from '../dist/engine.js';
+import {newGame,createBug,breed,advanceDay,dailySupport,releaseMany,makeOpponent,validateSave,setTimeOptions,syncRealTime,CRITICAL_DAYS} from '../dist/engine.js';
 import {DAY_MS} from '../dist/time.js';
 import {createLine,lineStats} from '../dist/lines.js';
 import {listAuction} from '../dist/auctions.js';
 
 function adults(n=2){const s=newGame();for(let i=0;i<n;i++){const b=createBug('king',i%2?'female':'male',.7,s.day);b.name=`개체 ${i+1}`;s.bugs.push(b);s.records['king-'+b.sex]=Math.max(s.records['king-'+b.sex]||0,b.length);}return s;}
 
-test('daily support grows with adult population without the former 65-leaf cap',()=>{
- for(const [count,expected] of [[0,35],[1,45],[10,135],[20,235],[48,515]]){
+test('smaller daily support grows with population and caps at 80 leaves',()=>{
+ for(const [count,expected] of [[0,15],[1,18],[10,45],[20,75],[48,80]]){
   const s=adults(count),before=s.coins;advanceDay(s);
   assert.equal(s.coins-before,expected);assert.match(s.log[0].text,new RegExp(`지원금 ${expected} 잎사귀`));
   assert.equal(validateSave(s),true);
@@ -17,23 +17,23 @@ test('daily support grows with adult population without the former 65-leaf cap',
 
 test('population support still pays for living adults in poor condition while healthy care earns extra',()=>{
  const s=adults(2);s.bugs[1].health=50;s.bugs[1].hunger=20;
- assert.deepEqual(dailySupport(s),{base:35,adults:2,offspring:0,healthy:1,adultSupport:12,offspringSupport:0,careBonus:4,total:51});
- const coins=s.coins;advanceDay(s);assert.equal(s.coins-coins,51);
+ assert.deepEqual(dailySupport(s),{base:15,adults:2,offspring:0,healthy:1,adultSupport:4,offspringSupport:0,careBonus:1,total:20});
+ const coins=s.coins;advanceDay(s);assert.equal(s.coins-coins,20);
 });
 
 test('brood offspring receive support once on emergence day and adult support on the following day',()=>{
  const s=adults(),brood=breed(s,s.bugs[0].id,s.bugs[1].id,()=>.25);
  for(const b of s.bugs){b.hunger=100;b.health=100;}
  brood.age=14;assert.equal(dailySupport(s).offspring,3);const before=s.coins;advanceDay(s);
- assert.equal(s.coins-before,64);assert.equal(s.bugs.length,5);assert.equal(s.broods.length,0);
+ assert.equal(s.coins-before,24);assert.equal(s.bugs.length,5);assert.equal(s.broods.length,0);
  for(const b of s.bugs){b.hunger=100;b.health=100;}
- const next=s.coins;advanceDay(s);assert.equal(s.coins-next,85);assert.equal(validateSave(s),true);
+ const next=s.coins;advanceDay(s);assert.equal(s.coins-next,30);assert.equal(validateSave(s),true);
 });
 
 test('dead adults, memorials and auction custody do not inflate daily support',()=>{
- const s=adults(3);s.bugs[0].health=5;s.bugs[0].hunger=0;s.bugs[0].criticalDays=2;
+ const s=adults(3);s.bugs[0].health=5;s.bugs[0].hunger=0;s.bugs[0].criticalDays=CRITICAL_DAYS-1;
  listAuction(s,'adult',s.bugs[2].id,{startPrice:100,durationMinutes:10},Date.now());
- const before=s.coins;advanceDay(s);assert.equal(s.coins-before,45);assert.equal(s.bugs.length,1);assert.equal(s.memorials.length,1);
+ const before=s.coins;advanceDay(s);assert.equal(s.coins-before,18);assert.equal(s.bugs.length,1);assert.equal(s.memorials.length,1);
  assert.equal(dailySupport(s).adults,1);assert.equal(validateSave(s),true);
 });
 
@@ -68,5 +68,11 @@ test('bulk release retains founders and descendant parent snapshots in the line 
  const parents=structuredClone(brood.parents),children=structuredClone(brood.children),records=structuredClone(s.records);
  releaseMany(s,[m.id,f.id]);assert.equal(s.bugs.length,0);assert.deepEqual(brood.parents,parents);assert.deepEqual(brood.children,children);assert.deepEqual(s.records,records);
  assert.ok(lineStats(s,line).members.filter(b=>[m.id,f.id].includes(b.id)).every(b=>b.status==='방생'));
- assert.equal(dailySupport(s).total,44);assert.equal(validateSave(s),true);
+ assert.equal(dailySupport(s).total,18);assert.equal(validateSave(s),true);
+});
+
+test('existing savings are kept and hundreds of empty offline days use the smaller base',()=>{
+ const now=Date.parse('2026-10-06T00:00:00+09:00'),s=newGame(now);s.coins=10000;setTimeOptions(s,{realTime:true,realGrowth:false},now);
+ assert.equal(s.coins,10000);syncRealTime(s,now+300*DAY_MS);assert.equal(s.coins,14500);
+ assert.match(s.log[0].text,/지원금 15 잎사귀/);assert.equal(validateSave(s),true);
 });
