@@ -1,9 +1,22 @@
+import {EXPEDITION_PLANS,expeditionPlan,expeditionCost} from './endgame.js';
 import {roomCapacity} from './room-capacity.js';
 import {SPECIES} from './world.js';
 import {canImportLive,migrateCareer} from './career.js';
-import {stableTraitRandom,validTraits} from './traits.js';
+import {stableTraitRandom,validTraits,rollTraits,rollGuaranteedTrait} from './traits.js';
 export const HOUR=3600000;
 export const OVERSEAS_REGIONS={
+ nepal:{name:'네팔',cost:3800,theme:'mountain',habitat:'히말라야 산기슭 고목',chances:{antaeus:1}},
+ laos:{name:'라오스',cost:2600,theme:'valley',habitat:'북부 산지 수액림',chances:{grandis:.55,giraffe:.45}},
+ papua:{name:'파푸아뉴기니',cost:9000,theme:'grove',habitat:'뉴기니 고목과 발효목',chances:{adolphinae:1}},
+ peru:{name:'페루',cost:7200,theme:'ridge',habitat:'안데스 동쪽 우림',chances:{neptune:.6,actaeon:.4}},
+ colombia:{name:'콜롬비아',cost:8500,theme:'mountain',habitat:'안데스 산림 유인등',chances:{neptune:.6,hercules:.4}},
+ costa_rica:{name:'코스타리카',cost:6000,theme:'island',habitat:'중미 열대우림 가장자리',chances:{elephas:.65,hercules:.35}},
+ guiana:{name:'프랑스령 기아나',cost:14000,theme:'deep',habitat:'기아나 순상지 심부 우림',chances:{actaeon:.7,hercules:.3}},
+ arizona:{name:'미국 애리조나',cost:6500,theme:'oak',habitat:'산지 물푸레나무 수액길',chances:{grantii:1}},
+ virginia:{name:'미국 버지니아',cost:6000,theme:'grove',habitat:'동부 활엽수 고목 숲',chances:{tityus:1}},
+ bolivia:{name:'볼리비아 융가스',cost:28000,theme:'ridge',habitat:'습한 산악 운무림',chances:{satanas:.7,hercules:.3}},
+ sumatra_highlands:{name:'수마트라 고산림',cost:18000,theme:'mountain',habitat:'뎀포산 고목과 수액',chances:{elaphus:.75,sumatra_flat:.25}},
+ cameroon_interior:{name:'카메룬 내륙',cost:16000,theme:'deep',habitat:'내륙 고목 심부 숲',chances:{mellyi:.7,tarandus:.3}},
  sumatra:{name:'수마트라',cost:1400,theme:'deep',habitat:'저지대 수액 나무',chances:{sumatra_flat:.55,atlas:.30,caucasus:.15}},
  sulawesi:{name:'술라웨시',cost:1800,theme:'grove',habitat:'열대 고목과 수액',chances:{metallifer:.65,atlas:.35}},
  malaysia:{name:'말레이시아',cost:1600,theme:'valley',habitat:'산기슭 활엽수림',chances:{giraffe:.65,caucasus:.35}},
@@ -23,10 +36,12 @@ export const OVERSEAS_REGIONS={
 };
 const note=(s,text)=>{s.log.unshift({day:s.day,text});s.log=s.log.slice(0,40);};
 const validTime=now=>{if(!Number.isSafeInteger(now)||now<1||now>8.64e15-20*HOUR)throw new Error('현재 시간을 확인하세요.');};
-export function startForeignTrip(s,region,now=Date.now()){
+export function startForeignTrip(s,region,now=Date.now(),{mode='standard',target=''}={}){
  validTime(now);const r=OVERSEAS_REGIONS[region];if(!r)throw new Error('원정지를 선택하세요.');if(s.foreignTrip)throw new Error('진행 중인 해외 원정을 먼저 마치세요.');
- if(s.coins<r.cost)throw new Error(`여행비 ${r.cost} 잎사귀가 필요합니다.`);
- migrateCareer(s);s.coins-=r.cost;s.foreignTrip={version:1,id:crypto.randomUUID(),region,phase:'field',started:now,waitUntil:now,surveys:0,catches:[]};note(s,`${r.name} 현지 도착 · 여행비 ${r.cost} 잎사귀`);return s.foreignTrip;
+ if(!Object.hasOwn(EXPEDITION_PLANS,mode))throw new Error('원정 방식을 선택하세요.');
+ if(target&&(!s.inventory.overseas_hq||!Object.hasOwn(r.chances,target)))throw new Error('해외 채집 본부를 구매한 뒤 현지 출현 종을 지정하세요.');
+ const cost=expeditionCost(r,mode);if(s.coins<cost)throw new Error(`여행비 ${cost} 잎사귀가 필요합니다.`);
+ migrateCareer(s);s.coins-=cost;s.foreignTrip={version:1,id:crypto.randomUUID(),region,mode,target,phase:'field',started:now,waitUntil:now,surveys:0,catches:[]};note(s,`${r.name} 현지 도착 · ${EXPEDITION_PLANS[mode].name} · 여행비 ${cost} 잎사귀`);return s.foreignTrip;
 }
 export function syncForeignTrip(s,now=Date.now()){
  const t=s.foreignTrip;if(!t||!['outbound','surveying','returning'].includes(t.phase))return false;
@@ -36,13 +51,15 @@ export function syncForeignTrip(s,now=Date.now()){
 }
 export function surveyForeignTrip(s,createBug,now=Date.now()){
  validTime(now);syncForeignTrip(s,now);const t=s.foreignTrip;
- if(!t||t.phase!=='field'||t.surveys>=3)throw new Error('현지 도착 후 탐사할 수 있습니다. 한 원정에서 3회 탐사합니다.');
+ if(!t||t.phase!=='field'||t.surveys>=expeditionPlan(t).surveys)throw new Error(`현지 도착 후 탐사할 수 있습니다. 한 원정에서 ${t?expeditionPlan(t).surveys:3}회 탐사합니다.`);
  if(now<t.started)throw new Error('현재 시각이 원정 시작 시각보다 이전입니다.');
  const r=OVERSEAS_REGIONS[t.region],random=stableTraitRandom(`${t.id}:${t.surveys}:overseas-v1`);let ticket=random(),sp=Object.keys(r.chances).at(-1);
  for(const [id,weight] of Object.entries(r.chances)){ticket-=weight;if(ticket<=0){sp=id;break;}}
- const sex=random()<.55?'male':'female',genetic=Math.min(1,.40+(random()+random())*.28+(s.inventory.field_lens? .04:0));
- const bug=createBug(sp,sex,genetic,s.day,`${r.name} 해외 원정`,null,1,null,{random});t.catches.push({bug,handling:'live'});t.surveys++;
- t.phase='field';t.waitUntil=now;note(s,`${r.name} 현지 탐사 ${t.surveys}/3 · ${bug.name} ${bug.length} mm 발견`);return bug;
+ sp=t.target||sp;const plan=expeditionPlan(t),sex=random()<.55?'male':'female',genetic=Math.min(1,plan.geneticBase+(random()+random())*plan.geneticSpread/2+(s.inventory.field_lens?.04:0));
+ let traits=rollTraits(sp,random,plan.traitBoost);
+ if(plan.guaranteedTrait&&t.surveys===plan.surveys-1&&!traits.length&&!t.catches.some(c=>c.bug.traits?.length))traits=rollGuaranteedTrait(sp,random);
+ const bug=createBug(sp,sex,genetic,s.day,`${r.name} · ${plan.name}`,null,1,null,{random,traits});t.catches.push({bug,handling:'live'});t.surveys++;
+ t.phase='field';t.waitUntil=now;note(s,`${r.name} 현지 탐사 ${t.surveys}/${plan.surveys} · ${bug.name} ${bug.length} mm 발견`);return bug;
 }
 export function processForeignCatch(s,id){const t=s.foreignTrip,c=t?.catches.find(c=>c.bug.id===id);if(!c||c.handling!=='live'||['returning','arrived'].includes(t.phase))throw new Error('현지의 생체 개체를 선택하세요.');c.handling='specimen';note(s,`${c.bug.name} · 현지에서 표본용 처리`);return c;}
 const reserved=s=>(s.auctions||[]).filter(a=>a.status==='active').reduce((n,a)=>n+(a.kind==='adult'?1:a.kind==='larva'?3:0),0);
@@ -73,9 +90,10 @@ export function claimRegion(s,id){const g=regionGoals(s).find(g=>g.id===id);if(!
 export function validOverseas(s,validBug){
  for(const [id,r] of Object.entries(s.career?.regions||{})){if(!OVERSEAS_REGIONS[id]||!r||!Number.isInteger(r.visits)||r.visits<1||r.visits>1e6||!Array.isArray(r.species)||!r.species.length||new Set(r.species).size!==r.species.length||r.species.some(sp=>!OVERSEAS_REGIONS[id].chances[sp])||typeof r.claimed!=='boolean'||r.claimed&&r.species.length!==Object.keys(OVERSEAS_REGIONS[id].chances).length)return false;}
  const t=s.foreignTrip;if(t===undefined||t===null)return true;
- if(!t||t.version!==1||typeof t.id!=='string'||!t.id||t.id.length>128||!OVERSEAS_REGIONS[t.region]||!['outbound','field','surveying','returning','arrived'].includes(t.phase)||!Number.isSafeInteger(t.started)||t.started<1||!Number.isSafeInteger(t.waitUntil)||t.waitUntil<t.started||!Number.isInteger(t.surveys)||t.surveys<0||t.surveys>3||!Array.isArray(t.catches)||t.catches.length!==t.surveys)return false;
+ if(!t||t.version!==1||typeof t.id!=='string'||!t.id||t.id.length>128||!OVERSEAS_REGIONS[t.region]||!['outbound','field','surveying','returning','arrived'].includes(t.phase)||!Number.isSafeInteger(t.started)||t.started<1||!Number.isSafeInteger(t.waitUntil)||t.waitUntil<t.started||!Number.isInteger(t.surveys)||t.surveys<0||t.surveys>(expeditionPlan(t)?.surveys||3)||!Array.isArray(t.catches)||t.catches.length!==t.surveys)return false;
+ if(t.mode!==undefined&&!Object.hasOwn(EXPEDITION_PLANS,t.mode)||t.target!==undefined&&(typeof t.target!=='string'||t.target&&(!s.inventory.overseas_hq||!Object.hasOwn(OVERSEAS_REGIONS[t.region].chances,t.target))))return false;
  const ids=new Set([...s.bugs.map(b=>b.id),...s.memorials.map(m=>m.id),...(s.auctions||[]).filter(a=>a.status==='active').map(a=>a.asset.id)]);
  if(t.catches.some(c=>!c||!['live','specimen'].includes(c.handling)||!validBug(c.bug)||!validTraits(c.bug.species,c.bug.traits)||!OVERSEAS_REGIONS[t.region].chances[c.bug.species]||ids.has(c.bug.id)||(ids.add(c.bug.id),false)))return false;
- if(t.phase==='outbound'&&t.surveys!==0||t.phase==='surveying'&&(t.surveys<1||t.surveys>=3)||['returning','arrived'].includes(t.phase)&&(!t.surveys||t.catches.some(c=>c.handling==='live')&&!canImportLive(s)))return false;
+ if(t.phase==='outbound'&&t.surveys!==0||t.phase==='surveying'&&(t.surveys<1||t.surveys>=expeditionPlan(t).surveys)||['returning','arrived'].includes(t.phase)&&(!t.surveys||t.catches.some(c=>c.handling==='live')&&!canImportLive(s)))return false;
  return true;
 }

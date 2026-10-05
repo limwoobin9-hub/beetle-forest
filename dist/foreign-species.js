@@ -3,6 +3,12 @@
 const stag=(name,latin,color,male,female,extra={})=>({name,latin,color,male,female,bredMale:[male[0],male[1]+8],bredFemale:[female[0],female[1]+4],power:1.08,grip:1.1,rarity:1,preferred:['sap','bark'],foreign:true,family:'stag',marketBase:260,...extra});
 const rhino=(name,latin,color,male,female,extra={})=>({...stag(name,latin,color,male,female),family:'rhino',power:1.16,grip:1.03,preferred:['sap','leaf'],marketBase:340,...extra});
 export const FOREIGN_SPECIES={
+ grantii:rhino('그란티장수풍뎅이','Dynastes grantii','#c5cdc1',[35,85],[30,50],{bredMale:[35,90],rarity:2,marketBase:950,note:'회백색 딱지날개와 검은 점, 길게 맞물리는 두 뿔. 원정지: 미국 애리조나.'}),
+ tityus:rhino('티티우스장수풍뎅이','Dynastes tityus','#a8b17f',[30,65],[25,45],{bredMale:[30,70],marketBase:750,note:'올리브색 딱지날개와 검은 점, 짧은 위아래 뿔. 원정지: 미국 버지니아.'}),
+ satanas:rhino('사탄장수풍뎅이','Dynastes satanas','#6d766c',[50,105],[35,55],{bredMale:[50,115],rarity:3,marketBase:1800,note:'검은 몸과 앞가슴 뿔 아래의 갈색 털. 원정지: 볼리비아 융가스.'}),
+ elaphus:stag('엘라푸스가위사슴벌레','Cyclommatus elaphus','#b99466',[35,100],[23,35],{bredMale:[35,110],rarity:3,marketBase:1400,note:'청동빛 몸과 매우 길고 가느다란 큰턱. 원정지: 수마트라 고산림.'}),
+ adolphinae:stag('아돌피나금색사슴벌레','Lamprima adolphinae','#91b76c',[20,55],[18,30],{bredMale:[20,60],marketBase:1000,note:'녹색·금색 금속광택과 길게 들린 큰턱. 원정지: 파푸아뉴기니.'}),
+ mellyi:stag('멜리사슴벌레','Homoderus mellyi','#c29b58',[30,65],[25,40],{rarity:3,marketBase:1300,note:'황갈색 몸의 검은 무늬와 수컷 앞가슴의 큰 돌출부. 원정지: 카메룬 내륙.'}),
  sumatra_flat:stag('수마트라넓적사슴벌레','Dorcus titanus yasuokai','#9fa897',[40,100],[32,48],{power:1.14,grip:1.16,note:'수마트라의 넓고 굵은 큰턱. 원정지: 수마트라.'}),
  metallifer:stag('메탈리퍼가위사슴벌레','Cyclommatus metallifer','#cdaf6e',[35,90],[20,30],{note:'금속빛 몸과 몸보다 길게 뻗은 큰턱. 원정지: 술라웨시.'}),
  atlas:rhino('아틀라스장수풍뎅이','Chalcosoma atlas','#9f9b60',[50,105],[35,60],{note:'머리 뿔과 앞가슴의 두 뿔, 청동빛 몸. 원정지: 수마트라·술라웨시.'}),

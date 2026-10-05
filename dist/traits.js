@@ -57,19 +57,20 @@ export function validTraits(species,traits){
  for(const id of traits){const t=TRAITS[id];if(typeof id!=='string'||!t||t.species!==species||groups.has(t.group))return false;groups.add(t.group);}
  return true;
 }
-function rollFromPool(pool,random){
+function rollFromPool(pool,random,boost=1){
  let ticket=random();
- for(const t of pool){ticket-=t.spawnRate;if(ticket<0)return [t.id];}
+ for(const t of pool){ticket-=t.spawnRate*boost;if(ticket<0)return [t.id];}
  return [];
 }
-export function rollTraits(species,random=Math.random){
- return rollFromPool(speciesTraits(species),random);
+export function rollTraits(species,random=Math.random,boost=1){
+ return rollFromPool(speciesTraits(species),random,boost);
 }
+export function rollGuaranteedTrait(species,random=Math.random){const pool=speciesTraits(species),total=pool.reduce((sum,t)=>sum+t.spawnRate,0);if(!total)return [];const result=rollFromPool(pool,()=>random()*total);return result.length?result:[pool.at(-1).id];}
 export function inheritanceChances(species,parents=[]){
  const ids=[...new Set(parents.flatMap(p=>p.traits||[]))];
  return ids.filter(id=>TRAITS[id]?.species===species).map(id=>({id,...TRAITS[id],chance:parents.filter(p=>p.traits?.includes(id)).length===2?TRAIT_RATES.matched:TRAIT_RATES.single}));
 }
-export function inheritTraits(species,parents,random=Math.random){
+export function inheritTraits(species,parents,random=Math.random,mutationBoost=1){
  const chances=inheritanceChances(species,parents),groups=[...new Set(chances.map(t=>t.group))],result=[];
  for(const group of groups){
   let ticket=random();
@@ -78,7 +79,7 @@ export function inheritTraits(species,parents,random=Math.random){
  // Mutations use only a group neither parent holds; a failed inheritance
  // cannot be rerolled, so the displayed 30% and 75% remain exact.
  const pool=speciesTraits(species).filter(t=>!groups.includes(t.group));
- if(result.length<2&&pool.length)result.push(...rollFromPool(pool,random));
+ if(result.length<2&&pool.length)result.push(...rollFromPool(pool,random,mutationBoost));
  return result;
 }
 export function traitLabel(id,sex){const t=TRAITS[id];return t?`${t.name}${t.maleOnly&&sex==='female'?' 혈통':''}`:'';}

@@ -14,7 +14,7 @@ function encounter(s){startExpedition(s,'oak',random);const i=s.expedition.spots
 
 test('new game has no insects, names, discoveries, or default size records',()=>{
  const s=newGame();assert.deepEqual(s.bugs,[]);assert.deepEqual(s.discoveries,[]);assert.deepEqual(s.records,{});assert.deepEqual(s.log,[]);assert.equal(keeperLevel(s),1);valid(s);
- assert.equal(SHOP_AREAS.length,7);assert.equal(Object.keys(PRODUCTS).length,45);
+ assert.equal(SHOP_AREAS.length,7);assert.equal(Object.keys(PRODUCTS).length,49);
 });
 test('shop district locks protect purchases and open at keeper levels',()=>{
  const s=newGame(),before=structuredClone(s);

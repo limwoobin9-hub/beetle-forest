@@ -408,6 +408,8 @@ export function productURL(id,product){
   if(product.roomStage){
    p(9,7,4,51,'#526c56');p(51,7,4,51,'#526c56');p(9,7,46,4,color);p(7,56,50,3,'#6b6346');
    for(let shelf=0;shelf<product.roomStage+1;shelf++){const y=15+shelf*9;p(13,y+6,38,3,color);for(let box=0;box<3;box++){const x=15+box*12;p(x,y,10,6,'#d3d5b1');p(x+1,y+1,8,2,'#f0eacb');p(x+2,y+4,6,2,'#937855');}}
+  }else if(product.endgame){
+   p(8,9,48,46,'#4b625a');p(11,12,42,39,color);p(14,16,36,8,'#d7dfbc');p(16,19,23,2,'#69867c');p(14,29,16,19,'#dde2c1');p(33,29,17,19,'#72938b');p(17,33,10,3,'#819b89');p(17,40,10,5,'#b6c7a1');p(37,33,8,10,'#d7deb4');p(39,30,4,7,'#e9e6c6');p(14,51,36,3,'#394e47');p(11,55,7,4,'#6a6047');p(46,55,7,4,'#6a6047');
   }else if(id==='field_lens'){
    line(c,[[31,37],[47,53]],'#40584e',9);line(c,[[33,39],[45,51]],'#9b9772',4);oval(c,8,8,35,35,'#465e53');oval(c,12,12,27,27,color);oval(c,16,16,19,19,'#c7e1cc');p(18,19,4,10,'#edf1cf');p(24,27,8,3,'#98bcad');
   }else if(id==='temperature_cabinet'){

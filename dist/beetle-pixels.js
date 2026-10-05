@@ -12,6 +12,12 @@ export const PIXEL_ANATOMY={
  stag:{dark:'#211d17',base:'#4c3c2d',shade:'#6d5239',light:'#9d8057',shine:'#c5a66c',head:29,thorax:23,body:24,jaw:'stag',femaleHead:19,leg:'#705637'},
 };
 const foreignDesigns={
+ grantii:{horn:'pincer',head:17,thorax:27,body:27,base:'#a7b2a8',shade:'#c2c9b7',light:'#e0e3c8',shine:'#f5efd6',spotted:true},
+ tityus:{horn:'pincer',hornScale:.65,head:17,thorax:28,body:28,base:'#73815b',shade:'#9baa73',light:'#c2cda1',shine:'#e0ddb7',spotted:true},
+ satanas:{horn:'pincer',head:18,thorax:29,body:28,base:'#27322b',shade:'#465245',light:'#7b886a',shine:'#a6ae83',hornHair:true},
+ elaphus:{jaw:'metallifer',head:22,thorax:20,body:21,maleHeadY:27,base:'#876143',shade:'#ac8258',light:'#d8b177',shine:'#f2d29c'},
+ adolphinae:{jaw:'dauria',head:22,thorax:23,body:23,base:'#376e46',shade:'#79923f',light:'#bbbe5a',shine:'#e7d779',metallic:true},
+ mellyi:{jaw:'saw',head:24,thorax:29,body:24,base:'#a97437',shade:'#c59348',light:'#e4b666',shine:'#f4d69a',saddle:true},
  sumatra_flat:{jaw:'flat',head:30,thorax:28,body:26},borneo_flat:{jaw:'flat',head:28,thorax:25,body:24},palawan:{jaw:'flat',head:29,thorax:26,body:24,maleHeadY:23},
  antaeus:{jaw:'king',head:27,thorax:27,body:26},grandis:{jaw:'king',head:28,thorax:26,body:25},tarandus:{jaw:'king',head:25,thorax:28,body:29},regius:{jaw:'flat',head:25,thorax:27,body:28},
  metallifer:{jaw:'metallifer',head:20,thorax:20,body:20,maleHeadY:26,base:'#977141',shade:'#bc9354',light:'#e6bd75',shine:'#ffe3a0'},
@@ -104,7 +110,8 @@ export function drawDorsal(c,species,sex,traits,{pen,poly,line,oval}){
    for(const pts of [[[14,ty+6],[9,ty],[5,13],[6,5],[9,2],[11,5],[10,13],[17,ty+3]],[[33,ty+6],[38,ty],[42,13],[41,5],[38,2],[36,5],[37,13],[30,ty+3]]]){poly(c,pts,a.dark);line(c,pts.slice(0,4),a.shade);}
    if(species==='caucasus')p(20,11,7,2,a.shade);
   }else if(a.horn==='pincer'){
-   poly(c,[[20,ty+6],[19,21],[20,10],[22,1],[25,0],[28,3],[27,12],[26,ty+6]],a.dark);line(c,[[23,ty+4],[23,15],[24,3]],a.light,2);p(21,9,5,3,a.shade);
+   const scaled=pts=>pts.map(([x,y])=>[x,ty+6+(y-ty-6)*(a.hornScale||1)]);
+   poly(c,scaled([[20,ty+6],[19,21],[20,10],[22,1],[25,0],[28,3],[27,12],[26,ty+6]]),a.dark);line(c,scaled([[23,ty+4],[23,15],[24,3]]),a.light,2);p(21,9,5,3,a.shade);
    if(species==='neptune'){line(c,[[13,ty+4],[10,15],[12,6]],a.dark,3);line(c,[[34,ty+4],[37,15],[35,6]],a.dark,3);}
   }else{
    poly(c,[[21,hy+7],[20,hy-4],[15,7],[15,2],[18,1],[22,7],[25,7],[29,1],[32,2],[32,7],[27,hy-4],[26,hy+7]],a.dark);line(c,[[24,hy+4],[24,12],[18,4]],a.light,2);line(c,[[24,12],[29,4]],a.light,2);
@@ -127,8 +134,10 @@ export function drawDorsal(c,species,sex,traits,{pen,poly,line,oval}){
  // Fine texture is taxon-specific: rough female rhino; short hairs on Lucanus.
  if(rhino&&!male)for(let i=0;i<22;i++)p(15+(i*7)%18,ty+2+(i*11)%30,1,1,i%3?a.shade:a.light);
  if(species==='stag'||['formosan','japan_stag'].includes(species)||a.hairy)for(let i=0;i<22;i++){const x=15+(i*7)%18,y=ty+2+(i*5)%(67-ty);if(x!==23&&x!==24)p(x,y,1,1,i%3?a.light:a.shine);}
+ if(a.saddle){p(17,ty+4,4,6,a.dark);p(27,ty+4,4,6,a.dark);p(18,by+6,3,6,a.dark);p(28,by+6,3,6,a.dark);if(male){poly(c,[[13,ty+2],[15,ty-7],[20,ty-10],[27,ty-10],[32,ty-7],[35,ty+2]],a.dark);p(17,ty-6,14,6,a.light);}}
+ if(a.hornHair&&male){p(20,17,6,3,'#a88750');p(22,22,5,4,'#86663c');}
  if(a.metallic){p(24-bw/2+3,by+4,2,bh-12,'#ba774b');p(24+bw/2-6,by+4,2,bh-10,'#688f98');p(14,ty+3,3,5,'#b86d53');}
- if(species==='hercules'&&male)for(let i=0;i<12;i++)p(14+(i*7)%20,by+4+(i*11)%Math.max(1,bh-7),2,1,a.dark);
+ if((species==='hercules'&&male)||a.spotted)for(let i=0;i<12;i++)p(14+(i*7)%20,by+4+(i*11)%Math.max(1,bh-7),2,1,a.dark);
 }
 export function drawLateral(c,species,sex,frame,traits,{pen,poly,line,oval}){
  const a=palette(species,sex,traits),p=pen(c),male=sex==='male',rhino=species==='rhino'||!!a.horn,step=frame%2?2:-2;
@@ -157,7 +166,7 @@ export function drawLateral(c,species,sex,frame,traits,{pen,poly,line,oval}){
   poly(c,[[47,23],[47,18],[50,13],[54,11],[55,13],[52,19],[52,23]],a.dark);line(c,[[50,21],[51,16],[53,13]],a.light);
  }else if(male){
   let jaw;
-  if(species==='metallifer')jaw=[[63,25],[66,21],[73,13],[83,5],[87,5],[86,8],[79,14],[77,17],[79,18],[74,21],[67,29],[63,28]];
+  if(species==='metallifer'||species==='elaphus')jaw=[[63,25],[66,21],[73,13],[83,5],[87,5],[86,8],[79,14],[77,17],[79,18],[74,21],[67,29],[63,28]];
   else if(species==='giraffe')jaw=[[63,25],[69,21],[75,14],[81,8],[86,6],[87,8],[81,13],[83,14],[78,18],[80,20],[75,23],[67,29],[63,28]];
   else if(species==='saw'||species==='japan_saw'||species==='sika')jaw=traits.includes('saw_curved')?[[63,25],[67,20],[74,15],[82,14],[87,17],[86,20],[82,22],[80,19],[76,20],[74,24],[70,28],[64,29]]:[[63,25],[69,22],[76,18],[82,16],[86,17],[85,21],[81,24],[78,23],[74,27],[67,29],[63,28]];
   else if(species==='little')jaw=[[63,25],[68,23],[77,20],[84,18],[86,19],[82,22],[77,24],[74,23],[71,27],[64,28]];

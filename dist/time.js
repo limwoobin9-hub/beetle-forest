@@ -1,5 +1,5 @@
 import {FOREIGN_SPECIES} from './foreign-species.js';
-const overseasBounds={sumatra_flat:[240,450],metallifer:[180,300],atlas:[300,510],caucasus:[390,660],giraffe:[270,480],antaeus:[300,570],grandis:[300,600],borneo_flat:[240,450],moellenkampi:[330,570],rainbow:[240,450],golden:[180,330],hercules:[570,810],actaeon:[720,1095],palawan:[270,480],formosan:[390,720],sika:[240,450],japan_stag:[390,780],japan_saw:[260,450],elephas:[480,810],neptune:[600,960],tarandus:[240,420],regius:[240,450]};
+const overseasBounds={grantii:[450,810],tityus:[360,720],satanas:[570,960],elaphus:[240,450],adolphinae:[180,360],mellyi:[240,450],sumatra_flat:[240,450],metallifer:[180,300],atlas:[300,510],caucasus:[390,660],giraffe:[270,480],antaeus:[300,570],grandis:[300,600],borneo_flat:[240,450],moellenkampi:[330,570],rainbow:[240,450],golden:[180,330],hercules:[570,810],actaeon:[720,1095],palawan:[270,480],formosan:[390,720],sika:[240,450],japan_stag:[390,780],japan_saw:[260,450],elephas:[480,810],neptune:[600,960],tarandus:[240,420],regius:[240,450]};
 // Indoor game estimates except the referenced measured cycles; see overseas-ko.md.
 const overseasProfiles=Object.fromEntries(Object.keys(FOREIGN_SPECIES).map(sp=>{const [min,max]=overseasBounds[sp],total=Math.round((min+max)/2);return [sp,{min,max,stages:[21,28,42,total-126,35]}];}));
 export const DAY_MS=24*60*60*1000;

@@ -13,7 +13,7 @@ test('wheel camera preserves the geographic point under the cursor, clamps pan, 
  const inView=zoomMap(start,4,anchor);assert.equal(inView.zoom,4);assert.deepEqual(world(inView),world(start));
  const out=zoomMap(inView,.25,anchor);assert.deepEqual(out,start);
  assert.deepEqual(mapView({zoom:100,x:-20,y:20}),{zoom:12,x:1/24,y:23/24});
- assert.deepEqual(mapView(null),start);assert.deepEqual(geoPoint([0,0]),{x:.5,y:.5});assert.equal(Object.keys(MAP_POINTS).length,16);
+ assert.deepEqual(mapView(null),start);assert.deepEqual(geoPoint([0,0]),{x:.5,y:.5});assert.equal(Object.keys(MAP_POINTS).length,28);
 });
 test('coastline data includes Korea, Japan, Sulawesi, Java and actual continental shapes',()=>{
  const buf=Buffer.from(LAND_ROWS,'base64'),rows=[];let offset=0;

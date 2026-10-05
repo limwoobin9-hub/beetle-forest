@@ -1,6 +1,7 @@
 import {OVERSEAS_REGIONS} from './overseas.js';
 import {LAND_WIDTH,LAND_HEIGHT,LAND_ROWS} from './world-land.js';
 export const MAP_POINTS={
+ nepal:[84,28],laos:[102.5,19.5],papua:[146.7,-7.3],peru:[-74,-9],colombia:[-74,5],costa_rica:[-84,10],guiana:[-53,4],arizona:[-111,34],virginia:[-79,37],bolivia:[-66.5,-16],sumatra_highlands:[103.1,-4],cameroon_interior:[13,6],
  sumatra:[100.4,-.5],sulawesi:[121,-2],malaysia:[102,4],india:[78,24],borneo:[114,1],java:[110,-7.4],
  australia:[145,-19],amazon:[-60,-4],philippines:[118.5,10],taiwan:[121,24],japan:[138,36],
  thailand:[100,18],vietnam:[106,21],mexico:[-98,19],ecuador:[-78,-1],cameroon:[12,5],

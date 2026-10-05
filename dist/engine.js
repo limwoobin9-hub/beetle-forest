@@ -1,3 +1,4 @@
+import {breedingTraitBoost} from './endgame.js';
 import {roomCapacity,roomLevel,validRoomExpansions} from './room-capacity.js';
 import {nurseryCapacity} from './nursery-capacity.js';
 import {newCareer,migrateCareer,recordCare,validCareer,syncLeague,leagueClass,LEAGUE_CLASSES,recordLeagueFight} from './career.js';
@@ -175,7 +176,7 @@ export function breed(state, maleId, femaleId, random=Math.random, mediumId='bas
   spend(state,mediumId,2);gainXP(state,30);m.bredDay=state.day;f.bredDay=state.day;m.hunger=clamp(m.hunger-12);f.hunger=clamp(f.hunger-18);
   const parents=[m,f].map(snapshotBug);
   const children=Array.from({length:3},()=>({sex:random()<.5?'male':'female',genetic:clamp((m.genetic+f.genetic)/2+(random()-.5)*.24+equipmentEffects(state,m.species).genetic,0,1)}));
-  children.forEach(child=>child.traits=inheritTraits(m.species,parents,random));
+  children.forEach(child=>child.traits=inheritTraits(m.species,parents,random,breedingTraitBoost(state)));
   const brood={id:uuid(),species:m.species,lineage,parents,children,started:state.day,age:0,growthMode:state.settings?.realGrowth?'natural':'fast',growthPlan:rollGrowthPlan(m.species,random),food:100,qualitySum:0,qualityDays:0,foodSum:0,nutritionSum:0,fungusSum:0,medium:mediumId};
   state.broods.push(brood);recordLineBrood(state,brood);state.totalBreedings++;note(state,`${SPECIES[m.species].name} 산란 · 알 3개`);
   return brood;

@@ -16,8 +16,8 @@ const bug=(sp='flat',sex='male',genetic=.6)=>createBug(sp,sex,genetic,1,'기존 
 const valid=s=>assert.equal(validateSave(JSON.parse(JSON.stringify(s))),true);
 function travel(region='sumatra',qualified=false){const s=newGame(NOW);s.coins=10000;if(qualified)s.career.qualifications.push('overseas_live');const t=startForeignTrip(s,region,NOW);syncForeignTrip(s,t.waitUntil);surveyForeignTrip(s,createBug,t.waitUntil);return {s,t};}
 function mount(s,m){prepareSpecimen(s,m.id);for(const [task,p] of [['water',{x:50,y:76}],['platform',{x:50,y:55}],['body',{x:50,y:45}],['lid',{x:50,y:25}]])workSpecimen(s,m.id,task,p);advanceDay(s);workSpecimen(s,m.id,'pin',PIN_POINT);workSpecimen(s,m.id,'height',null,{height:25});for(const p of PARTS){workSpecimen(s,m.id,'pose',p.target,{part:p.key});workSpecimen(s,m.id,'support',{x:p.target.x+(p.key[0]==='l'?-3:3),y:p.target.y+2},{part:p.key});}workSpecimen(s,m.id,'board',{x:50,y:91});for(let i=0;i<3;i++)advanceDay(s);for(const p of PARTS)workSpecimen(s,m.id,'remove-support',{x:91,y:91},{part:p.key});workSpecimen(s,m.id,'label',{x:50,y:91},{collector:'원정 숲지기',caption:'해외 탐사 표본'});storeSpecimen(s,m.id,'case-1',0);}
-test('all sixteen destinations need only money, including zero EXP and a completely full room',()=>{
- assert.equal(Object.keys(OVERSEAS_REGIONS).length,16);assert.equal(Object.keys(SPECIES).length,31);
+test('all twenty-eight destinations need only money, including zero EXP and a completely full room',()=>{
+ assert.equal(Object.keys(OVERSEAS_REGIONS).length,28);assert.equal(Object.keys(SPECIES).length,37);
  const reachable=new Set();
  for(const [id,r] of Object.entries(OVERSEAS_REGIONS)){
   assert.equal(Object.values(r.chances).reduce((a,b)=>a+b,0),1);Object.keys(r.chances).forEach(sp=>{assert.ok(SPECIES[sp].foreign);reachable.add(sp);});
