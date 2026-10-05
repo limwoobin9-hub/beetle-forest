@@ -1,3 +1,4 @@
+import {roomCapacity,MAX_ROOM_CAPACITY} from './room-capacity.js';
 import {EVENT_CATALOG,EVENT_TEMPLATES,EVENT_BY_KEY} from './event-catalog.js';
 import {SPECIES} from './world.js';
 import {PRODUCTS,keeperLevel,syncSupplies} from './catalog.js';
@@ -102,7 +103,7 @@ export function claimDailyEvent(state,id,now=Date.now()){
 }
 export function takeEventGuest(state,id,createBug,now=Date.now()){
  const e=liveCase(state,id,now),t=eventDefinition(e);if(e.stage!=='claimed'||!e.guest||e.guestTaken)throw new Error('받을 손님이 없어요.');
- if(state.bugs.length+state.broods.length*3+auctionReserved(state)>=48)throw new Error('사육 공간을 마련하면 손님을 데려올 수 있어요. 손님은 계속 기다립니다.');
+ if(state.bugs.length+state.broods.length*3+auctionReserved(state)>=roomCapacity(state))throw new Error('사육 공간을 마련하면 손님을 데려올 수 있어요. 손님은 계속 기다립니다.');
  const traits=speciesTraits(t.species),trait=e.rareGuest?traits[e.seed%traits.length]?.id:null;
  const b=createBug(t.species,e.seed%2?'female':'male',.72+(e.seed%23)/100,state.day,'사건 · '+t.title,null,1,null,{traits:trait?[trait]:[]});
  state.bugs.push(b);e.guestTaken=true;const key=b.species+'-'+b.sex;state.records[key]=Math.max(state.records[key]||0,b.length);if(!state.discoveries.includes(b.species))state.discoveries.push(b.species);
@@ -122,7 +123,7 @@ export function validDailyEvents(d){
  const ids=new Set(),days=new Set();
  for(const e of d.cases){
   const t=EVENT_BY_KEY[e?.key];
-  if(!t||typeof e.id!=='string'||!e.id||ids.has(e.id)||!integer(e.dayKey)||!integer(e.seed)||e.seed>4294967295||!STAGES.includes(e.stage)||![e.createdAt,e.startedAt,e.deadlineAt,e.stepStartedAt,e.waitUntil].every(integer)||!integer(e.reward)||e.reward<1||!integer(e.step)||e.step>=t.steps.length||typeof e.guest!=='boolean'||typeof e.rareGuest!=='boolean'||typeof e.guestTaken!=='boolean'||typeof e.legacy!=='boolean'||!Array.isArray(e.targetIds)||e.targetIds.length>48||new Set(e.targetIds).size!==e.targetIds.length||e.targetIds.some(id=>typeof id!=='string'||!id||id.length>120))return false;
+  if(!t||typeof e.id!=='string'||!e.id||ids.has(e.id)||!integer(e.dayKey)||!integer(e.seed)||e.seed>4294967295||!STAGES.includes(e.stage)||![e.createdAt,e.startedAt,e.deadlineAt,e.stepStartedAt,e.waitUntil].every(integer)||!integer(e.reward)||e.reward<1||!integer(e.step)||e.step>=t.steps.length||typeof e.guest!=='boolean'||typeof e.rareGuest!=='boolean'||typeof e.guestTaken!=='boolean'||typeof e.legacy!=='boolean'||!Array.isArray(e.targetIds)||e.targetIds.length>MAX_ROOM_CAPACITY||new Set(e.targetIds).size!==e.targetIds.length||e.targetIds.some(id=>typeof id!=='string'||!id||id.length>120))return false;
   if(!e.context||!['morning','day','evening','night'].includes(e.context.period)||![null,'clear','cloud','fog','rain','snow','storm'].includes(e.context.weather)||typeof e.context.region!=='string'||e.context.region.length>40||e.context.temperature!==null&&!Number.isFinite(e.context.temperature))return false;
   if(e.rareGuest&&!e.guest||e.guestTaken&&(!e.guest||e.stage!=='claimed'))return false;
   if(['ready','claimed'].includes(e.stage)&&e.step!==t.steps.length-1||e.stage==='step-ready'&&e.step===t.steps.length-1)return false;

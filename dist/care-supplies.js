@@ -1,3 +1,4 @@
+import {roomCapacity} from './room-capacity.js';
 import {PRODUCTS,isAdultBedding,productName,shopAccess,adultBeddingItems} from './catalog.js';
 
 export const careSupplyKind=kind=>kind==='jelly'?'jelly':kind==='clean'?'mat':null;
@@ -13,7 +14,7 @@ export function careSupplyPlan(state,kind,count,itemId=defaultCareSupply(state,k
  if(!careSupplyKind(kind))throw new Error('알 수 없는 돌봄입니다.');
  const product=PRODUCTS[itemId];
  if(!isCareSupply(product,kind))throw new Error(kind==='clean'?'성충 교체에는 참나무 바닥재 또는 코코넛 바닥재가 필요합니다. 유충용 톱밥은 번식통에서 사용하세요.':'사용할 젤리를 선택하세요.');
- if(!Number.isInteger(count)||count<0||count>48)throw new Error('교체할 개체 수를 확인하세요.');
+ if(!Number.isInteger(count)||count<0||count>roomCapacity(state))throw new Error('교체할 개체 수를 확인하세요.');
  const owned=state.inventory[itemId]||0,missing=Math.max(0,count-owned),packs=Math.ceil(missing/product.qty),cost=packs*product.price,autoBuy=state.settings.autoBuyCare===true;
  const name=productName(product,kind==='clean'?'adult':'food');
  let error='';

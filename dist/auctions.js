@@ -1,3 +1,4 @@
+import {roomCapacity} from './room-capacity.js';
 import {canSellLive,requireLiveSale} from './career.js';
 import {SPECIES,sizeRange} from './world.js';
 import {isLarva} from './catalog.js';
@@ -150,6 +151,6 @@ export function validAuctions(state,{validBug,validBrood}){
    if(a.kind==='specimen'&&!state.memorials?.some(m=>m.id===a.asset.id&&m.status==='mounted'))return false;
   }else if(!Number.isSafeInteger(a.settledAt)||a.settledAt<a.started||a.settledAt>a.ends||a.status==='sold'&&!a.bids.length||a.status!=='sold'&&a.bids.length||a.status!=='cancelled'&&a.settledAt!==a.ends)return false;
  }
- return active<=MAX_ACTIVE_AUCTIONS&&state.bugs.length+state.broods.length*3+auctionReserved(state)<=48&&state.broods.length+auctionNurseries(state)<=3;
+ return active<=MAX_ACTIVE_AUCTIONS&&state.bugs.length+state.broods.length*3+auctionReserved(state)<=roomCapacity(state)&&state.broods.length+auctionNurseries(state)<=3;
 }
 

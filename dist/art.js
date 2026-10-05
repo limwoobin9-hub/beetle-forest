@@ -405,7 +405,10 @@ export function productURL(id,product){
  }else if(product.kind==='trap'){
   p(14,34,36,19,'#775a3c');p(17,37,30,13,'#d4b374');p(18,25,27,4,'#7a7751');p(19,16,3,23,'#819363');p(41,16,3,23,'#819363');p(19,13,25,5,color);oval(c,24,25,14,12,color);p(25,27,5,2,'#fff0af');
  }else if(product.kind==='gear'){
-  if(id==='field_lens'){
+  if(product.roomStage){
+   p(9,7,4,51,'#526c56');p(51,7,4,51,'#526c56');p(9,7,46,4,color);p(7,56,50,3,'#6b6346');
+   for(let shelf=0;shelf<product.roomStage+1;shelf++){const y=15+shelf*9;p(13,y+6,38,3,color);for(let box=0;box<3;box++){const x=15+box*12;p(x,y,10,6,'#d3d5b1');p(x+1,y+1,8,2,'#f0eacb');p(x+2,y+4,6,2,'#937855');}}
+  }else if(id==='field_lens'){
    line(c,[[31,37],[47,53]],'#40584e',9);line(c,[[33,39],[45,51]],'#9b9772',4);oval(c,8,8,35,35,'#465e53');oval(c,12,12,27,27,color);oval(c,16,16,19,19,'#c7e1cc');p(18,19,4,10,'#edf1cf');p(24,27,8,3,'#98bcad');
   }else if(id==='temperature_cabinet'){
    p(12,7,40,49,'#4f6667');p(15,10,34,42,color);p(18,17,24,29,'#b8c9b3');p(20,19,20,25,'#718b7a');p(20,29,20,2,'#d7d6b5');p(23,22,7,6,'#c5b27f');p(31,33,7,7,'#d6c293');p(44,25,2,13,'#eee3bd');p(17,12,15,3,'#d8e7cf');p(36,11,8,5,'#4b6c64');p(15,56,6,3,'#514e39');p(43,56,6,3,'#514e39');

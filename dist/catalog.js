@@ -1,4 +1,5 @@
 import {SPECIES} from './world.js';
+import {BASE_ROOM_CAPACITY,ROOM_EXPANSIONS} from './room-capacity.js';
 export const SHOP_AREAS = [
  {id:'basic',name:'기본 사육용품',level:1,color:'#c4ad73'},
  {id:'nutrition',name:'영양 젤리',level:2,color:'#c89360'},
@@ -50,6 +51,7 @@ export const PRODUCTS = {
  spawn_logs:{name:'사슴벌레 산란목 관리대',kind:'gear',area:'equipment',price:1800,qty:1,color:'#9f835a',family:'stag',effect:'사슴벌레류 자손 성장 잠재력 소폭 증가'},
  specimen_table:{name:'표본 검사·촬영대',kind:'gear',area:'equipment',price:2200,qty:1,color:'#a8b2a0',effect:'표본 경매 감정가 +15% · 완성 표본 전시용'},
 };
+for(const step of ROOM_EXPANSIONS){const previous=ROOM_EXPANSIONS[step.stage-2]?.capacity??BASE_ROOM_CAPACITY;PRODUCTS[step.id]={name:`사육실 ${step.stage}단계 확장`,kind:'gear',area:'equipment',price:step.price,qty:1,color:step.color,roomStage:step.stage,effect:`성충 수용량 ${previous} → ${step.capacity}마리 · 영구 확장`};}
 for(const id of ['stag_mat','stag_master'])PRODUCTS[id].species.push(...Object.keys(SPECIES).filter(sp=>SPECIES[sp].foreign&&SPECIES[sp].family==='stag'&&!['tarandus','regius'].includes(sp)));
 for(const id of ['rhino_humus','rhino_master'])PRODUCTS[id].species.push(...Object.keys(SPECIES).filter(sp=>SPECIES[sp].family==='rhino'));
 for(const id of ['hiratake_800','hiratake_1400','oohira_800','oohira_1400','pro_fungus'])PRODUCTS[id].species.push('sumatra_flat','borneo_flat','antaeus','grandis','palawan');

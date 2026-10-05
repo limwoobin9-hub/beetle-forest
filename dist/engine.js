@@ -1,3 +1,4 @@
+import {roomCapacity,roomLevel,validRoomExpansions} from './room-capacity.js';
 import {newCareer,migrateCareer,recordCare,validCareer,syncLeague,leagueClass,LEAGUE_CLASSES,recordLeagueFight} from './career.js';
 import {careSupplyPlan,defaultCareSupply} from './care-supplies.js';
 import {syncForeignTrip,validOverseas} from './overseas.js';
@@ -110,8 +111,9 @@ export function buy(state,id){
   const access=shopAccess(state,item.area);if(!access.unlocked)throw new Error(access.missing.join(' · ')+' 필요');
   if(state.coins<item.price)throw new Error('잎사귀가 부족합니다.');
   if(item.kind==='gear'&&state.inventory[id])throw new Error('이미 보유한 영구 설비입니다.');
+  if(item.roomStage&&item.roomStage!==roomLevel(state)+1)throw new Error('이전 단계의 사육실 확장을 먼저 구매하세요.');
   state.coins-=item.price;state.inventory[id]=(state.inventory[id]||0)+item.qty;syncSupplies(state);
-  note(state,`${item.name} ${item.qty}개 구매`);return `${item.name} ${item.qty}개 구매`;
+  const message=item.roomStage?`${item.name} 완료 · 성충 ${roomCapacity(state)}마리 수용`:`${item.name} ${item.qty}개 구매`;note(state,message);return message;
 }
 export function startExpedition(state,location,random=Math.random,{focus='standard'}={}){
   if(!['standard','large'].includes(focus))throw new Error('탐사 방식을 선택하세요.');
@@ -120,7 +122,7 @@ export function startExpedition(state,location,random=Math.random,{focus='standa
   const cost=focus==='large'?Math.max(2,LOCATIONS[location].cost):LOCATIONS[location].cost;
   if(focus==='large'&&state.coins<40)throw new Error('대형 개체 탐사비 40 잎사귀가 필요합니다.');
   if(state.energy<cost)throw new Error('오늘 탐험 횟수를 모두 사용했습니다.');
-  if(state.bugs.length+state.broods.length*3+auctionReserved(state)>=48)throw new Error('사육실 수용량은 48마리입니다.');
+  if(state.bugs.length+state.broods.length*3+auctionReserved(state)>=roomCapacity(state))throw new Error(`사육실 수용량은 ${roomCapacity(state)}마리입니다. 상점에서 공간을 확장할 수 있어요.`);
   state.energy-=cost;if(focus==='large')state.coins-=40;
   const spots=Array.from({length:7},(_,i)=>({x:46+i*60+Math.floor(random()*12),y:90+Math.floor(random()*105),kind:['sap','bark','leaf'][Math.floor(random()*3)],searched:false,rich:random()<0.55}));
   const guaranteed=Math.floor(random()*spots.length);spots[guaranteed].rich=true;
@@ -147,7 +149,7 @@ export function approachInsect(state,mode){
 }
 export function finishCapture(state,accuracy){
   const e=state.expedition;if(!e||e.phase!=='catch'||!Number.isFinite(accuracy)||accuracy<0||accuracy>1)throw new Error('포획할 곤충이 없습니다.');
-  if(state.bugs.length+state.broods.length*3+auctionReserved(state)>=48)throw new Error('사육실 공간이 부족합니다.');
+  if(state.bugs.length+state.broods.length*3+auctionReserved(state)>=roomCapacity(state))throw new Error('사육실 공간이 부족합니다.');
   e.attempts++;const {threshold,maxAttempts}=captureDifficulty(e.encounter);
   if(accuracy<threshold){e.encounter.alert=clamp(e.encounter.alert+23);e.encounter.speed*=1.16;if(e.attempts>=maxAttempts||e.encounter.alert>=90){state.expedition=null;note(state,'채집 종료 · 포획 실패');return {escaped:true};}return {missed:true};}
   const bug=e.encounter.bug;state.bugs.push(bug);state.captures++;state.coins+=10;gainXP(state,24+SPECIES[bug.species].rarity*12);
@@ -164,7 +166,7 @@ export function breed(state, maleId, femaleId, random=Math.random, mediumId='bas
   if([m,f].some(b=>b.health<55||b.hunger<45))throw new Error('부모가 건강하고 충분히 먹어야 해요. 먼저 돌봐 주세요.');
   if([m,f].some(b=>state.day-b.bredDay<4))throw new Error('번식 후 4일 동안 쉬어야 해요.');
   if(state.broods.length+auctionNurseries(state)>=3)throw new Error('번식통 세 개가 모두 사용 중이에요. 우화를 기다려 주세요.');
-  if(state.bugs.length+auctionReserved(state)+(state.broods.length+1)*3+(state.expedition?1:0)>48)throw new Error('후손과 채집 개체를 위한 사육실 공간이 부족합니다.');
+  if(state.bugs.length+auctionReserved(state)+(state.broods.length+1)*3+(state.expedition?1:0)>roomCapacity(state))throw new Error('후손과 채집 개체를 위한 사육실 공간이 부족합니다.');
   if(PRODUCTS[mediumId]?.kind!=='mat'||!compatibleFood(PRODUCTS[mediumId],m.species))throw new Error('이 종에 맞는 산란용 발효톱밥을 선택하세요.');
   if((state.inventory[mediumId]||0)<2)throw new Error('선택한 산란용 발효톱밥 2개가 필요합니다.');
   const lineage=offspringLineage(state,m,f,chosenLineId);checkLineCapacity(state,lineage);
@@ -357,7 +359,7 @@ export function checkTrap(state,id,random=Math.random){
  const t=state.traps.find(t=>t.id===id);if(!t)throw new Error('덫을 찾을 수 없습니다.');
  if(state.day<t.ready)throw new Error('다음 날 확인할 수 있습니다.');
  if(state.expedition)throw new Error('진행 중인 채집을 먼저 마치세요.');
- if(state.bugs.length+state.broods.length*3+auctionReserved(state)>=48)throw new Error('사육 공간이 부족합니다.');
+ if(state.bugs.length+state.broods.length*3+auctionReserved(state)>=roomCapacity(state))throw new Error('사육 공간이 부족합니다.');
  state.traps=state.traps.filter(t=>t.id!==id);
  if(random()<.28){note(state,`${LOCATIONS[t.location].name} · 덫 확인 · 발견 없음`);return null;}
  const kind=t.itemId==='fruit_trap'?'leaf':t.itemId==='sap_trap'?'sap':'bark';
@@ -371,10 +373,10 @@ export function claimResearch(state,id){const r=currentResearch(state);if(!r||r.
 export function validateSave(s){
   const finite=(n,min,max)=>Number.isFinite(n)&&n>=min&&n<=max;
   if(!s||![1,2,3,4,5].includes(s.version)||!finite(s.day,1,1000000)||!Number.isInteger(s.day)||!finite(s.coins,0,1e9)||!finite(s.jelly,0,1e6)||!finite(s.substrate,0,1e6)||!finite(s.energy,0,5))return false;
-  if(!Array.isArray(s.bugs)||s.bugs.length>48||!Array.isArray(s.broods)||s.broods.length>3||s.bugs.length+s.broods.length*3>48||!Array.isArray(s.log)||!Array.isArray(s.discoveries)||!s.records||!finite(s.captures,0,1e9))return false;
+  if(!Array.isArray(s.bugs)||s.bugs.length>roomCapacity(s)||!Array.isArray(s.broods)||s.broods.length>3||s.bugs.length+s.broods.length*3>roomCapacity(s)||!Array.isArray(s.log)||!Array.isArray(s.discoveries)||!s.records||!finite(s.captures,0,1e9))return false;
   if(s.version>=4&&(!s.settings||typeof s.settings.realTime!=='boolean'||typeof s.settings.realGrowth!=='boolean'||s.settings.realGrowth&&!s.settings.realTime||!s.clock||!finite(s.clock.anchorAt,0,8.64e15)||(s.clock.calendar!==undefined&&typeof s.clock.calendar!=='boolean')))return false;
   if(s.settings?.autoBuyCare!==undefined&&typeof s.settings.autoBuyCare!=='boolean')return false;
-  if(!validCareer(s)||!validLines(s)||s.dailyEvents!==undefined&&!validDailyEvents(s.dailyEvents))return false;
+  if(!validRoomExpansions(s)||!validCareer(s)||!validLines(s)||s.dailyEvents!==undefined&&!validDailyEvents(s.dailyEvents))return false;
   if(s.worldExchange!==undefined&&(!s.worldExchange||!Number.isSafeInteger(s.worldExchange.lastAt)||!finite(s.worldExchange.lastAt,1,8.64e15)))return false;
   const validBug=b=>b&&typeof b.id==='string'&&Object.hasOwn(SPECIES,b.species)&&validTraits(b.species,b.traits)&&validLineage(s,b.lineage,b.species)&&['male','female'].includes(b.sex)&&typeof b.name==='string'&&b.name.length<=60&&finite(b.length,1,200)&&finite(b.genetic,0,1)&&['hunger','health','hygiene'].every(k=>finite(b[k],0,100))&&finite(b.born,1,s.day)&&finite(b.bredDay,-99,s.day)&&finite(b.fightDay,-99,s.day)&&finite(b.wins,0,1e6)&&finite(b.losses,0,1e6)&&['dietDays','beddingDays'].every(k=>b[k]===undefined||finite(b[k],0,4))&&['dietDecay','beddingDecay'].every(k=>b[k]===undefined||finite(b[k],0,100))&&['trainingGrip','trainingStamina'].every(k=>b[k]===undefined||finite(b[k],0,12))&&(b.favorite===undefined||typeof b.favorite==='boolean');
   if(s.version>=2){
@@ -430,4 +432,4 @@ export function rename(state,id,name){
 
 export function collectDailyGuest(state,id,now=Date.now()){return takeEventGuest(state,id,createBug,now);}
 
-export function finishDailyMission(state,id,now=Date.now()){const result=claimDailyEvent(state,id,now);let bug=null;if(result.guest&&state.bugs.length+state.broods.length*3+auctionReserved(state)<48)bug=takeEventGuest(state,id,createBug,now);return {...result,bug,pendingGuest:result.guest&&!bug};}
+export function finishDailyMission(state,id,now=Date.now()){const result=claimDailyEvent(state,id,now);let bug=null;if(result.guest&&state.bugs.length+state.broods.length*3+auctionReserved(state)<roomCapacity(state))bug=takeEventGuest(state,id,createBug,now);return {...result,bug,pendingGuest:result.guest&&!bug};}

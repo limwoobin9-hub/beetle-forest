@@ -1,3 +1,4 @@
+import {roomCapacity} from './room-capacity.js';
 import {SPECIES} from './world.js';
 import {canImportLive,migrateCareer} from './career.js';
 import {stableTraitRandom,validTraits} from './traits.js';
@@ -50,14 +51,14 @@ export function returnForeignTrip(s,now=Date.now()){
  if(now<t.started)throw new Error('현재 시각이 원정 시작 시각보다 이전입니다.');
  const live=t.catches.filter(c=>c.handling==='live').length;
  if(live&&!canImportLive(s))throw new Error('해외 생체 취급 자격이 없습니다. 생체를 모두 현지에서 표본용으로 처리해야 귀국할 수 있습니다.');
- if(s.bugs.length+s.broods.length*3+reserved(s)+live>48)throw new Error('사육실 공간이 부족합니다. 공간을 비우거나 현지 개체를 표본용으로 처리하세요.');
+ if(s.bugs.length+s.broods.length*3+reserved(s)+live>roomCapacity(s))throw new Error('사육실 공간이 부족합니다. 공간을 비우거나 현지 개체를 표본용으로 처리하세요.');
  t.phase='arrived';t.waitUntil=now;note(s,`${OVERSEAS_REGIONS[t.region].name}에서 즉시 귀국 · 생체 ${live}마리 · 표본 재료 ${t.catches.length-live}점`);return t;
 }
 export function foreignMemorial(bug,day,region=null){const b=structuredClone(bug);b.health=0;b.criticalDays=7;return {id:b.id,bug:b,diedDay:day,status:'stored',preparedDay:null,readyDay:null,mountedDay:null,caseId:null,slot:null,work:null,caption:'',origin:'foreign',region};}
 export function claimForeignReturn(s,now=Date.now()){
  validTime(now);syncForeignTrip(s,now);const t=s.foreignTrip;if(!t||t.phase!=='arrived'||now<t.waitUntil)throw new Error('귀국 후 도착한 개체를 가져오세요.');
  const live=t.catches.filter(c=>c.handling==='live');if(live.length&&!canImportLive(s))throw new Error('생체 반입 자격이 필요합니다.');
- if(s.bugs.length+s.broods.length*3+reserved(s)+live.length>48)throw new Error('도착한 생체를 위한 사육실 공간을 먼저 비워 주세요.');
+ if(s.bugs.length+s.broods.length*3+reserved(s)+live.length>roomCapacity(s))throw new Error('도착한 생체를 위한 사육실 공간을 먼저 비워 주세요.');
  const c=migrateCareer(s),r=OVERSEAS_REGIONS[t.region];c.regions[t.region]??={visits:0,species:[],claimed:false};const record=c.regions[t.region];record.visits++;
  for(const item of t.catches){const b=item.bug;b.born=s.day;
   if(item.handling==='live'){b.criticalDays=0;s.bugs.push(b);}else s.memorials.push(foreignMemorial(b,s.day,t.region));
