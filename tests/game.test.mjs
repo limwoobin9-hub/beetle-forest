@@ -4,7 +4,7 @@ import {SPECIES,newGame,createBug,buy,care,startExpedition,inspectSpot,approachI
 import {PRODUCTS,SHOP_AREAS,LEVEL_XP,keeperLevel,shopAccess} from '../dist/catalog.js';
 
 import {stepHabitat,habitatState} from '../dist/habitat.js';
-import {DAY_MS,growthDays,nextDayAt,midnightAt} from '../dist/time.js';
+import {DAY_MS,broodGrowthDays,GROWTH_PROFILES,nextDayAt,midnightAt} from '../dist/time.js';
 import {collectionView,staminaCapacity} from '../dist/collection.js';
 const random=()=>.25;
 function rng(seed=17){return ()=>{seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return (seed>>>0)/4294967296;};}
@@ -45,7 +45,7 @@ test('jelly and bedding use the selected product and grant daily care XP once',(
  care(s,b.id,'jelly','pro_jelly');assert.equal(b.hunger,100);assert.equal(b.health,55);assert.equal(s.xp,5);
  care(s,b.id,'jelly','pro_jelly');assert.equal(s.xp,5);assert.equal(b.health,80);
  care(s,b.id,'clean','coconut');assert.equal(b.hygiene,100);assert.equal(s.xp,10);
- advanceDay(s);assert.equal(b.hunger,90);assert.equal(b.hygiene,90);valid(s);
+ advanceDay(s);assert.equal(b.hunger,90);assert.ok(Math.abs(b.hygiene-(100-60/14))<1e-9);valid(s);
 });
 test('all species pass through egg, three instars, pupa and adult',()=>{
  for(const species of Object.keys(SPECIES)){
@@ -170,8 +170,8 @@ test('real time follows Korean midnight, catches up after reload, and never repe
 test('natural schedules take months and every species persists until its emergence day',()=>{
  const now=1800000000000;
  for(const species of Object.keys(SPECIES)){
-  const s=newGame(now),[m,f]=parents(s,species);setTimeOptions(s,{realTime:true,realGrowth:true},now);const brood=breed(s,m.id,f.id,random),days=growthDays(species,'natural');
-  assert.ok(days>=180&&days<=480);assert.equal(syncRealTime(s,now+8*DAY_MS).days,8);assert.equal(s.broods.length,1);assert.equal(s.totalEmergences,0);valid(s);
+  const s=newGame(now),[m,f]=parents(s,species);setTimeOptions(s,{realTime:true,realGrowth:true},now);const brood=breed(s,m.id,f.id,random),days=broodGrowthDays(brood);
+  assert.ok(days>=GROWTH_PROFILES[species].min&&days<=GROWTH_PROFILES[species].max);assert.equal(syncRealTime(s,now+8*DAY_MS).days,8);assert.equal(s.broods.length,1);assert.equal(s.totalEmergences,0);valid(s);
   syncRealTime(s,now+(days-1)*DAY_MS);assert.equal(s.broods.length,1);assert.equal(broodStage(brood),'번데기');valid(s);
   syncRealTime(s,now+days*DAY_MS);assert.equal(s.broods.length,0);assert.equal(s.totalEmergences,1);assert.equal(s.bugs.length,3);assert.equal(s.memorials.length,2);valid(s);
  }
@@ -220,3 +220,4 @@ test('collection sorting uses numeric size and stamina in both directions withou
  }
  assert.deepEqual(bugs.map(b=>b.id),order);assert.equal(collectionView(bugs,{sort:'stamina-asc'})[0],bugs[2]);assert.equal(collectionView(bugs,{sort:'stamina-desc'})[0],bugs[1]);
 });
+

@@ -10,7 +10,7 @@ export const PRODUCTS = {
  brown_sugar:{name:'흑당 젤리',kind:'jelly',area:'basic',price:50,qty:6,color:'#815240',health:10,decay:16,duration:2,effect:'건강 +10 · 2일간 포만감 감소 16'},
  fruit_mix:{name:'과일 믹스 젤리',kind:'jelly',area:'basic',price:55,qty:6,color:'#d57858',health:12,decay:18,duration:1,effect:'포만감 100 · 건강 +12'},
  basic_mat:{name:'참나무 사육매트',kind:'mat',adultBedding:true,area:'basic',price:55,qty:4,color:'#95724b',food:0.72,hygiene:12,duration:2,effect:'성충 청소 · 전 종 애벌레 먹이'},
- coconut:{name:'코코넛 깔개매트',kind:'mat',adultBedding:true,area:'basic',price:45,qty:5,color:'#b89667',food:0,hygiene:10,duration:3,effect:'성충 청결 100 · 3일간 청결 감소 10'},
+ coconut:{name:'코코넛 깔개매트',kind:'mat',adultBedding:true,area:'basic',price:45,qty:5,color:'#b89667',food:0,hygiene:10,duration:3,effect:'성충 청결 100 · 오래 유지되는 깔개'},
  honey:{name:'허니 젤리',kind:'jelly',area:'nutrition',price:90,qty:6,color:'#d89f32',health:14,decay:14,duration:2,effect:'건강 +14 · 2일간 포만감 감소 14'},
  protein:{name:'고단백 화이트 젤리',kind:'jelly',area:'nutrition',price:110,qty:6,color:'#eee5c0',health:20,decay:16,duration:2,effect:'포만감 100 · 건강 +20'},
  probiotic:{name:'유산균 젤리',kind:'jelly',area:'nutrition',price:100,qty:6,color:'#dab1b8',health:18,decay:15,duration:2,effect:'건강 +18 · 2일간 포만감 감소 15'},
@@ -54,3 +54,4 @@ export function shopAccess(state,areaId){
  if(emergences)requirements.push({label:`우화 ${emergences}회`,done:(state.totalEmergences||0)>=emergences});
  return {unlocked:requirements.every(r=>r.done),missing:requirements.filter(r=>!r.done).map(r=>r.label),requirements};
 }
+
